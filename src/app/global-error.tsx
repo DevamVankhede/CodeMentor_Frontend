@@ -8,20 +8,37 @@ export default function GlobalError({
     reset: () => void;
 }) {
     return (
-        <html>
+        <html lang="en">
             <body>
-                <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-red-900 to-gray-900">
-                    <div className="text-center px-4">
-                        <h1 className="text-6xl font-bold text-white mb-4">Error</h1>
-                        <h2 className="text-2xl font-semibold text-gray-200 mb-4">
+                <div style={{
+                    minHeight: '100vh',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'linear-gradient(to bottom right, #1a1a1a, #7f1d1d, #1a1a1a)'
+                }}>
+                    <div style={{ textAlign: 'center', padding: '1rem' }}>
+                        <h1 style={{ fontSize: '3.75rem', fontWeight: 'bold', color: 'white', marginBottom: '1rem' }}>
+                            Error
+                        </h1>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#e5e7eb', marginBottom: '1rem' }}>
                             Application Error
                         </h2>
-                        <p className="text-gray-400 mb-8 max-w-md mx-auto">
+                        <p style={{ color: '#9ca3af', marginBottom: '2rem', maxWidth: '28rem', margin: '0 auto 2rem' }}>
                             {error.message || "A critical error occurred"}
                         </p>
                         <button
                             onClick={reset}
-                            className="inline-block px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
+                            style={{
+                                display: 'inline-block',
+                                padding: '0.75rem 1.5rem',
+                                backgroundColor: '#dc2626',
+                                color: 'white',
+                                fontWeight: '500',
+                                borderRadius: '0.5rem',
+                                border: 'none',
+                                cursor: 'pointer'
+                            }}
                         >
                             Try Again
                         </button>
