@@ -1,0 +1,12 @@
+.label {
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500; /* font-medium */
+  line-height: 1.25rem; /* leading-none */
+  cursor: default; /* default for peer-disabled:cursor-not-allowed */
+  opacity: 1; /* default for peer-disabled:opacity-70 */
+}
+
+.label[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
