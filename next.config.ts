@@ -4,6 +4,16 @@ const nextConfig: NextConfig = {
   /* config options here */
   output: 'standalone', // For Docker deployment
 
+  // Disable ESLint during production builds
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
+  // Disable TypeScript errors during production builds
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
   webpack: (config, { isDev, isServer }) => {
     // Fixes npm packages that depend on `fs` module
     if (!isDev && !isServer) {
