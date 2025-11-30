@@ -26,14 +26,15 @@ export async function GET(request: NextRequest) {
             },
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
             return NextResponse.json(
-                { error: data.message || 'Failed to fetch stats' },
+                { error: errorData.message || 'Failed to fetch stats from backend' },
                 { status: response.status }
             );
         }
+
+        const data = await response.json();
 
         // Transform backend stats to match frontend expectations
         const transformedStats = {

@@ -14,20 +14,11 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Disable static page generation to avoid Html import issues
-  experimental: {
-    appDir: true,
-  },
-
-  // Generate all pages dynamically
-  generateBuildId: async () => {
-    return 'build-' + Date.now();
-  },
-
-  webpack: (config, { isDev, isServer }) => {
-    // Fixes npm packages that depend on `fs` module
+  // Fixes npm packages that depend on `fs` module
+  webpack: (config: any, { isDev, isServer }: any) => {
     if (!isDev && !isServer) {
       config.resolve.fallback = {
+        ...config.resolve.fallback,
         fs: false,
       };
     }

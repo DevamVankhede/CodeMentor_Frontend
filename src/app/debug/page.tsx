@@ -1,11 +1,60 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Navigation from '@/components/layout/Navigation';
 import Card, { CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 
+// Make this page dynamic to prevent static generation
+export const dynamic = 'force-dynamic';
+
 export default function DebugPage() {
+  const [mounted, setMounted] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [backendStatus, setBackendStatus] = useState<{ success: boolean; message: string; details?: any } | null>(null);
+  const [geminiStatus, setGeminiStatus] = useState<string>('Checking...');
+  const [isCheckingBackend, setIsCheckingBackend] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if (typeof window !== 'undefined') {
+      setAuthToken(localStorage.getItem('auth_token'));
+      checkBackendConnection();
+      checkGeminiConfig();
+    }
+  }, []);
+
+  const checkBackendConnection = async () => {
+    setIsCheckingBackend(true);
+    try {
+      const response = await fetch('/api/backend/test');
+      const data = await response.json();
+      setBackendStatus({
+        success: data.success,
+        message: data.message,
+        details: data
+      });
+    } catch (error: any) {
+      setBackendStatus({
+        success: false,
+        message: 'Failed to test backend connection',
+        details: { error: error.message }
+      });
+    } finally {
+      setIsCheckingBackend(false);
+    }
+  };
+
+  const checkGeminiConfig = () => {
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey) {
+      setGeminiStatus('❌ Not configured - Set NEXT_PUBLIC_GEMINI_API_KEY in environment variables');
+    } else if (apiKey.length < 20) {
+      setGeminiStatus('⚠️ Invalid key format');
+    } else {
+      setGeminiStatus(`✅ Configured (Key: ${apiKey.substring(0, 10)}...)`);
+    }
+  };
   const { user, isAuthenticated, isLoading } = useAuth();
 
   const makeAdmin = async () => {
@@ -14,11 +63,17 @@ export default function DebugPage() {
       return;
     }
 
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (!token) {
+      alert('No auth token found');
+      return;
+    }
+
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/make-admin/${user.email}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -122,8 +177,62 @@ export default function DebugPage() {
             <CardContent className="p-6">
               <h2 className="text-xl font-bold text-text-primary mb-4">API Information</h2>
               <div className="space-y-2 text-sm">
-                <p><strong>API URL:</strong> {process.env.NEXT_PUBLIC_API_URL}</p>
-                <p><strong>Auth Token:</strong> {localStorage.getItem('auth_token') ? 'Present' : 'Not found'}</p>
+                <p><strong>API URL:</strong> {process.env.NEXT_PUBLIC_API_URL || 'Not configured'}</p>
+                <p><strong>Auth Token:</strong> {mounted && authToken ? 'Present' : mounted ? 'Not found' : 'Loading...'}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold text-text-primary mb-4">Backend Connection Status</h2>
+              {isCheckingBackend ? (
+                <p className="text-text-secondary">Checking backend connection...</p>
+              ) : backendStatus ? (
+                <div className="space-y-2 text-sm">
+                  <p className={backendStatus.success ? 'text-green-400' : 'text-red-400'}>
+                    <strong>Status:</strong> {backendStatus.success ? '✅ Connected' : '❌ Not Connected'}
+                  </p>
+                  <p className="text-text-secondary">{backendStatus.message}</p>
+                  {backendStatus.details?.endpoint && (
+                    <p className="text-text-secondary"><strong>Working Endpoint:</strong> {backendStatus.details.endpoint}</p>
+                  )}
+                  {!backendStatus.success && (
+                    <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                      <p className="text-red-400 text-xs font-semibold mb-2">Troubleshooting Steps:</p>
+                      <ul className="text-xs text-text-secondary space-y-1 list-disc list-inside">
+                        {backendStatus.details?.instructions?.map((step: string, idx: number) => (
+                          <li key={idx}>{step}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <Button 
+                    onClick={checkBackendConnection}
+                    variant="outline"
+                    className="mt-4"
+                  >
+                    Test Again
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-text-secondary">Click "Test Again" to check backend connection</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold text-text-primary mb-4">Gemini AI Configuration</h2>
+              <div className="space-y-2 text-sm">
+                <p><strong>Status:</strong> {geminiStatus}</p>
+                <p className="text-text-secondary">
+                  {geminiStatus.includes('❌') && (
+                    <span className="block mt-2">
+                      To fix: Add <code className="bg-surface-secondary px-2 py-1 rounded">NEXT_PUBLIC_GEMINI_API_KEY</code> to your Render environment variables.
+                    </span>
+                  )}
+                </p>
               </div>
             </CardContent>
           </Card>

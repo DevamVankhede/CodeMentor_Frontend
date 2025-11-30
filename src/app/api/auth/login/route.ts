@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-// Disable SSL verification for development
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 export async function POST(request: NextRequest) {
     try {
         const { email, password } = await request.json();
