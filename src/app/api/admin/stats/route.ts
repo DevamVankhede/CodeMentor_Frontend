@@ -1,48 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+
+// Disable SSL verification for development
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 export async function GET(request: NextRequest) {
     try {
-        // In production, verify admin token
         const authHeader = request.headers.get('authorization');
 
-        // Mock data - replace with actual database queries
-        const stats = {
-            totalUsers: 1247,
-            activeUsers: 892,
-            newUsersToday: 23,
-            totalCodeSamples: 156,
-            totalRoadmaps: 23,
-            totalCollaborations: 45,
-            totalGamesPlayed: 3421,
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
+        const token = authHeader.substring(7);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+        const response = await fetch(`${apiUrl}/api/admin/stats`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            return NextResponse.json(
+                { error: data.message || 'Failed to fetch stats' },
+                { status: response.status }
+            );
+        }
+
+        // Transform backend stats to match frontend expectations
+        const transformedStats = {
+            totalUsers: data.totalUsers || 0,
+            activeUsers: data.activeUsers || 0,
+            newUsersToday: 0, // Calculate if needed
+            totalCodeSamples: data.totalCodeSnippets || 0,
+            totalRoadmaps: data.totalRoadmaps || 0,
+            totalCollaborations: data.totalSessions || 0,
+            totalGamesPlayed: data.totalGameResults || 0,
             systemHealth: 'healthy',
-            serverUptime: '15 days',
-            databaseSize: '2.4 GB',
-            recentActivity: [
-                {
-                    id: '1',
-                    type: 'user_signup',
-                    user: 'john.doe@example.com',
-                    description: 'New user registered',
-                    timestamp: new Date().toISOString(),
-                },
-                {
-                    id: '2',
-                    type: 'code_created',
-                    user: 'sarah.dev@example.com',
-                    description: 'Created new code sample',
-                    timestamp: new Date(Date.now() - 3600000).toISOString(),
-                },
-                {
-                    id: '3',
-                    type: 'game_completed',
-                    user: 'mike.code@example.com',
-                    description: 'Completed Bug Hunt game',
-                    timestamp: new Date(Date.now() - 7200000).toISOString(),
-                },
-            ],
+            serverUptime: 'N/A',
+            databaseSize: 'N/A',
+            recentActivity: data.recentActivity || [],
         };
 
-        return NextResponse.json(stats);
+        return NextResponse.json(transformedStats);
     } catch (error: any) {
         console.error('Error fetching admin stats:', error);
         return NextResponse.json(

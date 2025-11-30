@@ -1,80 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+
+// Disable SSL verification for development
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 export async function GET(request: NextRequest) {
     try {
-        // In production, verify admin token and fetch from database
         const authHeader = request.headers.get('authorization');
 
-        // Mock data - replace with actual database queries
-        const users = [
-            {
-                id: 1,
-                name: 'John Doe',
-                email: 'john.doe@example.com',
-                isAdmin: false,
-                level: 5,
-                xp: 2500,
-                createdAt: '2024-01-15T10:00:00Z',
-                lastActive: '2024-01-20T15:30:00Z',
-                status: 'active',
-                gamesPlayed: 12,
-                codeSubmissions: 8,
-            },
-            {
-                id: 2,
-                name: 'Sarah Developer',
-                email: 'sarah.dev@example.com',
-                isAdmin: false,
-                level: 8,
-                xp: 4200,
-                createdAt: '2024-01-10T08:00:00Z',
-                lastActive: '2024-01-20T16:45:00Z',
-                status: 'active',
-                gamesPlayed: 25,
-                codeSubmissions: 15,
-            },
-            {
-                id: 3,
-                name: 'Mike Coder',
-                email: 'mike.code@example.com',
-                isAdmin: false,
-                level: 3,
-                xp: 1200,
-                createdAt: '2024-01-12T14:00:00Z',
-                lastActive: '2024-01-18T12:00:00Z',
-                status: 'inactive',
-                gamesPlayed: 5,
-                codeSubmissions: 3,
-            },
-            {
-                id: 4,
-                name: 'Emily Tech',
-                email: 'emily.tech@example.com',
-                isAdmin: false,
-                level: 6,
-                xp: 3100,
-                createdAt: '2024-01-08T09:00:00Z',
-                lastActive: '2024-01-20T14:20:00Z',
-                status: 'active',
-                gamesPlayed: 18,
-                codeSubmissions: 12,
-            },
-            {
-                id: 5,
-                name: 'Alex Builder',
-                email: 'alex.builder@example.com',
-                isAdmin: false,
-                level: 4,
-                xp: 1800,
-                createdAt: '2024-01-14T11:00:00Z',
-                lastActive: '2024-01-19T10:00:00Z',
-                status: 'active',
-                gamesPlayed: 9,
-                codeSubmissions: 6,
-            },
-        ];
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
 
-        return NextResponse.json(users);
+        const token = authHeader.substring(7);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+        const response = await fetch(`${apiUrl}/api/admin/users`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            return NextResponse.json(
+                { error: data.message || 'Failed to fetch users' },
+                { status: response.status }
+            );
+        }
+
+        return NextResponse.json(data);
     } catch (error: any) {
         console.error('Error fetching users:', error);
         return NextResponse.json(
@@ -84,15 +45,84 @@ export async function GET(request: NextRequest) {
     }
 }
 
+export async function POST(request: NextRequest) {
+    try {
+        const authHeader = request.headers.get('authorization');
+
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
+        const token = authHeader.substring(7);
+        const body = await request.json();
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+        const response = await fetch(`${apiUrl}/api/admin/users`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            return NextResponse.json(
+                { error: data.message || 'Failed to create user' },
+                { status: response.status }
+            );
+        }
+
+        return NextResponse.json(data);
+    } catch (error: any) {
+        console.error('Error creating user:', error);
+        return NextResponse.json(
+            { error: 'Failed to create user', details: error.message },
+            { status: 500 }
+        );
+    }
+}
+
 export async function PUT(request: NextRequest) {
     try {
+        const authHeader = request.headers.get('authorization');
+
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
+        const token = authHeader.substring(7);
         const body = await request.json();
-        const { userId, action, data } = body;
+        const { userId, ...updateData } = body;
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-        // In production, update database
-        console.log(`Admin action: ${action} for user ${userId}`, data);
+        const response = await fetch(`${apiUrl}/api/admin/users/${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updateData),
+        });
 
-        return NextResponse.json({ success: true, message: `User ${action} successfully` });
+        const data = await response.json();
+
+        if (!response.ok) {
+            return NextResponse.json(
+                { error: data.message || 'Failed to update user' },
+                { status: response.status }
+            );
+        }
+
+        return NextResponse.json(data);
     } catch (error: any) {
         console.error('Error updating user:', error);
         return NextResponse.json(
@@ -104,13 +134,45 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
     try {
+        const authHeader = request.headers.get('authorization');
+
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
+        const token = authHeader.substring(7);
         const { searchParams } = new URL(request.url);
         const userId = searchParams.get('userId');
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-        // In production, delete from database
-        console.log(`Admin deleted user: ${userId}`);
+        if (!userId) {
+            return NextResponse.json(
+                { error: 'User ID is required' },
+                { status: 400 }
+            );
+        }
 
-        return NextResponse.json({ success: true, message: 'User deleted successfully' });
+        const response = await fetch(`${apiUrl}/api/admin/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            return NextResponse.json(
+                { error: data.message || 'Failed to delete user' },
+                { status: response.status }
+            );
+        }
+
+        return NextResponse.json(data);
     } catch (error: any) {
         console.error('Error deleting user:', error);
         return NextResponse.json(
