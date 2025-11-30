@@ -205,7 +205,7 @@ export default function HomePage() {
           >
             <h2 className="text-4xl md:text-5xl font-extrabold text-foreground mb-4">
               Everything You Need to{" "}
-              <span className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
+              <span className="text-white">
                 Master Your Craft
               </span>
             </h2>
