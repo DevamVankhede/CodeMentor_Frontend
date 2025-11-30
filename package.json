@@ -9,7 +9,11 @@
     "lint": "eslint",
     "clean": "node -e \"require('fs').rmSync('.next', {recursive: true, force: true})\"",
     "clean:build": "npm run clean && npm run build",
-    "prebuild": "node -e \"require('fs').rmSync('.next', {recursive: true, force: true})\""
+    "prebuild": "node -e \"require('fs').rmSync('.next', {recursive: true, force: true})\"",
+    "ci": "npm ci"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
