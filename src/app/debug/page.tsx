@@ -1,11 +1,23 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Navigation from '@/components/layout/Navigation';
 import Card, { CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 
+// Make this page dynamic to prevent static generation
+export const dynamic = 'force-dynamic';
+
 export default function DebugPage() {
+  const [mounted, setMounted] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    if (typeof window !== 'undefined') {
+      setAuthToken(localStorage.getItem('auth_token'));
+    }
+  }, []);
   const { user, isAuthenticated, isLoading } = useAuth();
 
   const makeAdmin = async () => {
@@ -14,11 +26,17 @@ export default function DebugPage() {
       return;
     }
 
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (!token) {
+      alert('No auth token found');
+      return;
+    }
+
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/make-admin/${user.email}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -123,7 +141,7 @@ export default function DebugPage() {
               <h2 className="text-xl font-bold text-text-primary mb-4">API Information</h2>
               <div className="space-y-2 text-sm">
                 <p><strong>API URL:</strong> {process.env.NEXT_PUBLIC_API_URL}</p>
-                <p><strong>Auth Token:</strong> {localStorage.getItem('auth_token') ? 'Present' : 'Not found'}</p>
+                <p><strong>Auth Token:</strong> {mounted && authToken ? 'Present' : mounted ? 'Not found' : 'Loading...'}</p>
               </div>
             </CardContent>
           </Card>
