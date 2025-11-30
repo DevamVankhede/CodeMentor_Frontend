@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "clean": "node -e \"require('fs').rmSync('.next', {recursive: true, force: true})\"",
+    "clean:build": "npm run clean && npm run build",
+    "prebuild": "node -e \"require('fs').rmSync('.next', {recursive: true, force: true})\""
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
