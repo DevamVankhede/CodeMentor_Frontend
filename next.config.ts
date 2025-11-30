@@ -15,9 +15,10 @@ const nextConfig: NextConfig = {
   },
 
   // Fixes npm packages that depend on `fs` module
-  webpack: (config, { isDev, isServer }) => {
+  webpack: (config: any, { isDev, isServer }: any) => {
     if (!isDev && !isServer) {
       config.resolve.fallback = {
+        ...config.resolve.fallback,
         fs: false,
       };
     }
