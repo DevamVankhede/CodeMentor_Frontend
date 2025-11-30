@@ -2,44 +2,49 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
     try {
-        // In production, verify admin token
         const authHeader = request.headers.get('authorization');
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7000';
 
-        // Mock data - replace with actual database queries
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
+        const token = authHeader.substring(7);
+
+        // Fetch stats from backend API
+        const response = await fetch(`${apiUrl}/api/admin/stats`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            return NextResponse.json(
+                { error: errorData.message || 'Failed to fetch stats from backend' },
+                { status: response.status }
+            );
+        }
+
+        const backendStats = await response.json();
+
+        // Transform backend response to match frontend format
         const stats = {
-            totalUsers: 1247,
-            activeUsers: 892,
-            newUsersToday: 23,
-            totalCodeSamples: 156,
-            totalRoadmaps: 23,
-            totalCollaborations: 45,
-            totalGamesPlayed: 3421,
-            systemHealth: 'healthy',
-            serverUptime: '15 days',
-            databaseSize: '2.4 GB',
-            recentActivity: [
-                {
-                    id: '1',
-                    type: 'user_signup',
-                    user: 'john.doe@example.com',
-                    description: 'New user registered',
-                    timestamp: new Date().toISOString(),
-                },
-                {
-                    id: '2',
-                    type: 'code_created',
-                    user: 'sarah.dev@example.com',
-                    description: 'Created new code sample',
-                    timestamp: new Date(Date.now() - 3600000).toISOString(),
-                },
-                {
-                    id: '3',
-                    type: 'game_completed',
-                    user: 'mike.code@example.com',
-                    description: 'Completed Bug Hunt game',
-                    timestamp: new Date(Date.now() - 7200000).toISOString(),
-                },
-            ],
+            totalUsers: backendStats.totalUsers || 0,
+            activeUsers: backendStats.activeUsers || 0,
+            newUsersToday: backendStats.newUsersToday || 0,
+            totalCodeSamples: backendStats.totalCodeSnippets || 0,
+            totalRoadmaps: backendStats.totalRoadmaps || 0,
+            totalCollaborations: backendStats.activeSessions || 0,
+            totalGamesPlayed: backendStats.totalGameResults || 0,
+            systemHealth: backendStats.systemHealth || 'healthy',
+            serverUptime: backendStats.serverUptime || '0 days',
+            databaseSize: backendStats.databaseSize || '0 MB',
+            recentActivity: backendStats.recentActivity || [],
         };
 
         return NextResponse.json(stats);

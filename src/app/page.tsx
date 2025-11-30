@@ -106,7 +106,7 @@ export default function HomePage() {
 
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-foreground mb-6 leading-tight">
               Unlock Your Coding Potential with{" "}
-              <span className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
+              <span className="text-white">
                 AI-Powered Precision
               </span>
             </h1>
