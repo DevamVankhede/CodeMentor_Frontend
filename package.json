@@ -1,0 +1,49 @@
+{
+  "name": "codementor-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "clean": "node -e \"require('fs').rmSync('.next', {recursive: true, force: true})\"",
+    "clean:build": "npm run clean && npm run build",
+    "prebuild": "node -e \"require('fs').rmSync('.next', {recursive: true, force: true})\"",
+    "ci": "npm ci"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@headlessui/react": "^2.2.9",
+    "@monaco-editor/react": "^4.7.0",
+    "@reduxjs/toolkit": "^2.9.0",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@tailwindcss/typography": "^0.5.19",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.22",
+    "js-cookie": "^3.0.5",
+    "lucide-react": "^0.545.0",
+    "next": "15.5.4",
+    "postcss": "^8.4.49",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-redux": "^9.2.0",
+    "recharts": "^2.15.0",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/js-cookie": "^3.0.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,467 @@
+/* Custom CSS Variables for Advanced Theming */
+:root {
+  /* Brand Colors */
+  --brand-primary: #0ea5e9; /* Sky 500 */
+  --brand-secondary: #8b5cf6; /* Violet 500 */
+  --brand-accent: #10b981; /* Emerald 500 */
+
+  /* Themed Colors (Dark by Default) */
+  --background-primary: #1a1a2e;
+  --background-secondary: #16213e;
+  --background-tertiary: #0f3460;
+  --background-card: rgba(27, 38, 59, 0.7); /* Darker glass effect */
+  --background-hover: rgba(45, 64, 89, 0.5);
+
+  --text-primary: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --text-accent: var(--brand-primary);
+  --text-code: #f8f8f2; /* Light text for code */
+
+  --border-color: rgba(60, 75, 113, 0.5);
+  --border-accent: var(--brand-primary);
+
+  /* Gradients */
+  --gradient-brand: linear-gradient(
+    135deg,
+    var(--brand-primary) 0%,
+    var(--brand-secondary) 100%
+  );
+  --gradient-button: linear-gradient(
+    135deg,
+    #3b82f6 0%,
+    #a855f7 100%
+  ); /* Blue to Purple */
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  --gradient-error: linear-gradient(135deg, #ef4444 0%, #f472b6 100%);
+
+  /* Glass Effect */
+  --glass-bg: rgba(255, 255, 255, 0.05); /* Lighter for subtle effect on dark */
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.3);
+
+  /* Editor specific colors - refined for clarity */
+  --editor-background: #1e1e1e;
+  --editor-line-number: #6a6a6a;
+  --editor-selection: rgba(0, 100, 200, 0.3);
+  --editor-current-line: rgba(255, 255, 255, 0.08);
+
+  /* Syntax Highlighting - VS Code Dark+ theme inspired */
+  --syntax-comment: #6a9955;
+  --syntax-keyword: #569cd6;
+  --syntax-string: #ce9178;
+  --syntax-number: #b5cea8;
+  --syntax-function: #dcdcaa;
+  --syntax-operator: #d4d4d4;
+  --syntax-punctuation: #d4d4d4;
+  --syntax-variable: #9cdcfe;
+  --syntax-type: #4ec9b0;
+  --syntax-constant: #e3a953;
+
+  /* Animations */
+  --animation-fast: 0.15s ease-out;
+  --animation-normal: 0.3s ease-out;
+  --animation-slow: 0.5s ease-out;
+}
+
+/* Dark mode adjustments (if light mode is ever introduced, this would be swapped) */
+/* For a purely dark theme, these can be directly in :root */
+[data-theme="dark"],
+:root {
+  /* Ensure these variables are applied as primary */
+  --glass-bg: rgba(0, 0, 0, 0.3);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+
+  /* Editor specific colors */
+  --editor-background: #1e1e1e;
+  --editor-line-number: #6a6a6a;
+  --editor-selection: rgba(0, 100, 200, 0.3);
+  --editor-current-line: rgba(255, 255, 255, 0.08);
+
+  /* Syntax Highlighting - VS Code Dark+ theme inspired */
+  --syntax-comment: #6a9955;
+  --syntax-keyword: #569cd6;
+  --syntax-string: #ce9178;
+  --syntax-number: #b5cea8;
+  --syntax-function: #dcdcaa;
+  --syntax-operator: #d4d4d4;
+  --syntax-punctuation: #d4d4d4;
+  --syntax-variable: #9cdcfe;
+  --syntax-type: #4ec9b0;
+  --syntax-constant: #e3a953;
+}
+
+/* Base Styles */
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    sans-serif;
+  color: var(--text-primary);
+  background-color: var(--background-primary);
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background-primary); /* Use new background variable */
+  min-height: 100vh;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gradient-brand);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gradient-button);
+}
+
+/* Glass Morphism Components */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-card {
+  @apply glass rounded-2xl p-6 transition-all duration-300;
+  background-color: var(--background-card); /* Use new card background */
+  border-color: var(--border-color);
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--glass-shadow); /* Keep consistent shadow */
+  background-color: var(--background-hover);
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+}
+
+/* Animated Gradient Background */
+.animated-gradient {
+  background: linear-gradient(
+    -45deg,
+    var(--background-primary),
+    var(--background-secondary),
+    var(--background-tertiary),
+    var(--background-primary)
+  );
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Floating Animation */
+.float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+/* Pulse Animation */
+.pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes pulseGlow {
+  from {
+    box-shadow: 0 0 20px var(--brand-primary);
+  }
+  to {
+    box-shadow: 0 0 40px rgba(14, 165, 233, 0.8);
+  } /* Using brand primary color */
+}
+
+/* Code Editor Styles */
+.code-editor {
+  font-family: "JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  background-color: var(--editor-background);
+  color: var(--text-code);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden; /* Ensures rounded corners are applied to content */
+}
+
+.code-line {
+  @apply flex items-center transition-colors duration-200;
+}
+
+.code-line:hover {
+  background-color: var(--editor-current-line); /* Use a subtle highlight */
+}
+
+.code-line-number {
+  @apply w-12 text-center text-sm select-none border-r mr-4;
+  color: var(--editor-line-number);
+  border-color: var(--border-color);
+}
+
+.code-content {
+  @apply flex-1 px-4 py-1;
+}
+
+/* Syntax Highlighting */
+.token.comment {
+  color: var(--syntax-comment);
+}
+.token.keyword {
+  color: var(--syntax-keyword);
+}
+.token.string {
+  color: var(--syntax-string);
+}
+.token.number {
+  color: var(--syntax-number);
+}
+.token.function {
+  color: var(--syntax-function);
+}
+.token.operator {
+  color: var(--syntax-operator);
+}
+.token.punctuation {
+  color: var(--syntax-punctuation);
+}
+.token.variable {
+  color: var(--syntax-variable);
+}
+.token.type {
+  color: var(--syntax-type);
+}
+.token.constant {
+  color: var(--syntax-constant);
+}
+
+/* Button Styles */
+.btn-primary {
+  @apply text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300;
+  background: var(--gradient-button);
+}
+
+.btn-secondary {
+  @apply glass text-white font-semibold py-3 px-6 rounded-xl transform hover:scale-105 transition-all duration-300;
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.btn-secondary:hover {
+  background-color: var(--background-hover); /* A more subtle hover */
+}
+
+.btn-ghost {
+  @apply text-white/80 hover:text-white font-medium py-2 px-4 rounded-lg transition-all duration-200;
+  background-color: transparent;
+}
+
+.btn-ghost:hover {
+  background-color: rgba(255, 255, 255, 0.08); /* Light hover for ghost */
+}
+
+/* Form Styles */
+.form-input {
+  @apply w-full px-4 py-3 rounded-xl border-0 focus:ring-2 focus:outline-none transition-all duration-300;
+  background-color: var(--background-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.form-input:focus {
+  border-color: var(--border-accent);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.3); /* Focus glow using brand primary */
+}
+
+.form-label {
+  @apply block font-medium mb-2;
+  color: var(--text-secondary);
+}
+
+/* Card Styles */
+.card-hover {
+  @apply transform hover:scale-105 hover:shadow-2xl transition-all duration-300;
+}
+
+/* Loading Spinner */
+.spinner {
+  @apply animate-spin rounded-full h-8 w-8 border-b-2;
+  border-color: var(--brand-primary); /* Use brand primary for spinner */
+}
+
+/* Notification Styles */
+.notification {
+  @apply rounded-xl p-4 shadow-lg transform transition-all duration-300;
+  background-color: var(--background-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.notification.success {
+  @apply border-green-500/50 bg-green-500/10;
+  border-color: var(--gradient-success);
+}
+
+.notification.error {
+  @apply border-red-500/50 bg-red-500/10;
+  border-color: var(--gradient-error);
+}
+
+.notification.warning {
+  @apply border-yellow-500/50 bg-yellow-500/10;
+  border-color: rgba(234, 179, 8, 0.5); /* A more subtle yellow */
+}
+
+/* Game UI Styles */
+.game-card {
+  @apply glass-card relative overflow-hidden;
+  background-color: var(--background-card);
+  border-color: var(--border-color);
+}
+
+.game-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  ); /* Subtle shine */
+  transition: left 0.5s;
+}
+
+.game-card:hover::before {
+  left: 100%;
+}
+
+/* Progress Bar */
+.progress-bar {
+  @apply w-full bg-white/20 rounded-full h-2 overflow-hidden;
+  background-color: var(--background-secondary);
+}
+
+.progress-fill {
+  @apply h-full rounded-full transition-all duration-500 ease-out;
+  background: var(--gradient-brand); /* Use brand gradient */
+}
+
+/* Leaderboard Styles */
+.leaderboard-item {
+  @apply flex items-center justify-between p-4 mb-3 transition-all duration-300;
+  background-color: var(--background-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+.leaderboard-item:hover {
+  background-color: var(--background-hover);
+}
+
+.rank-badge {
+  @apply w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm;
+  color: var(--text-primary); /* Ensure text is visible */
+}
+
+.rank-1 {
+  background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
+  color: #333;
+} /* Gold */
+.rank-2 {
+  background: linear-gradient(135deg, #c0c0c0 0%, #808080 100%);
+  color: #333;
+} /* Silver */
+.rank-3 {
+  background: linear-gradient(135deg, #cd7f32 0%, #a0522d 100%);
+  color: #eee;
+} /* Bronze */
+.rank-other {
+  background-color: var(--background-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .glass-card {
+    @apply p-4;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    @apply py-2 px-4 text-sm;
+  }
+}
+
+/* Dark mode specific adjustments - removed as :root now defines dark theme */
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus styles for accessibility */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+  border-color: var(--brand-primary); /* Highlight border on focus */
+}
