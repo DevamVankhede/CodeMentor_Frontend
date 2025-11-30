@@ -2,11 +2,13 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { config, isGeminiConfigured } from './config';
 
 // Initialize Gemini AI
+// Use a fallback key to prevent build-time errors
+const apiKey = config.gemini.apiKey || 'dummy-key-for-build';
 if (!isGeminiConfigured()) {
-    console.error('❌ Gemini API key is not configured. Please set NEXT_PUBLIC_GEMINI_API_KEY in .env.local');
+    console.warn('⚠️ Gemini API key is not configured. Please set NEXT_PUBLIC_GEMINI_API_KEY in .env.local');
 }
 
-const genAI = new GoogleGenerativeAI(config.gemini.apiKey);
+const genAI = new GoogleGenerativeAI(apiKey);
 
 export interface CodeAnalysisResult {
     bugs: Array<{
@@ -37,22 +39,40 @@ export interface ExplanationResult {
 }
 
 export class GeminiService {
-    private model;
+    private model: any;
 
     constructor() {
-        if (!isGeminiConfigured()) {
-            throw new Error('Gemini API key is not configured. Please add NEXT_PUBLIC_GEMINI_API_KEY to your .env.local file.');
+        // Initialize model lazily to prevent build-time errors
+        if (isGeminiConfigured()) {
+            // Use gemini-2.5-pro - The BEST and most capable model!
+            this.model = genAI.getGenerativeModel({
+                model: 'gemini-2.5-pro',
+                generationConfig: {
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.95,
+                    maxOutputTokens: 2048,
+                }
+            });
         }
-        // Use gemini-2.5-pro - The BEST and most capable model!
-        this.model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-pro',
-            generationConfig: {
-                temperature: 0.7,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 2048,
+    }
+
+    private ensureModel() {
+        if (!this.model) {
+            if (!isGeminiConfigured()) {
+                throw new Error('Gemini API key is not configured. Please add NEXT_PUBLIC_GEMINI_API_KEY to your .env.local file.');
             }
-        });
+            this.model = genAI.getGenerativeModel({
+                model: 'gemini-2.5-pro',
+                generationConfig: {
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.95,
+                    maxOutputTokens: 2048,
+                }
+            });
+        }
+        return this.model;
     }
 
     async analyzeCode(code: string, language: string): Promise<CodeAnalysisResult> {
@@ -83,7 +103,8 @@ Provide the response in this exact JSON format:
 }`;
 
         try {
-            const result = await this.model.generateContent(prompt);
+            const model = this.ensureModel();
+            const result = await model.generateContent(prompt);
             const response = await result.response;
             const text = response.text();
 
@@ -135,7 +156,8 @@ Provide the response in this exact JSON format:
 }`;
 
         try {
-            const result = await this.model.generateContent(prompt);
+            const model = this.ensureModel();
+            const result = await model.generateContent(prompt);
             const response = await result.response;
             const text = response.text();
 
@@ -173,7 +195,8 @@ Provide the response in this exact JSON format:
 }`;
 
         try {
-            const result = await this.model.generateContent(prompt);
+            const model = this.ensureModel();
+            const result = await model.generateContent(prompt);
             const response = await result.response;
             const text = response.text();
 
@@ -202,7 +225,8 @@ Provide the response in this exact JSON format:
 Provide only the code without any explanation or markdown formatting.`;
 
         try {
-            const result = await this.model.generateContent(prompt);
+            const model = this.ensureModel();
+            const result = await model.generateContent(prompt);
             const response = await result.response;
             let code = response.text();
 
@@ -226,7 +250,8 @@ ${code}
 Provide only the fixed code without any explanation or markdown formatting.`;
 
         try {
-            const result = await this.model.generateContent(prompt);
+            const model = this.ensureModel();
+            const result = await model.generateContent(prompt);
             const response = await result.response;
             let fixedCode = response.text();
 
@@ -252,7 +277,8 @@ Focus on: ${aspect}
 Provide only the improved code without any explanation or markdown formatting.`;
 
         try {
-            const result = await this.model.generateContent(prompt);
+            const model = this.ensureModel();
+            const result = await model.generateContent(prompt);
             const response = await result.response;
             let improvedCode = response.text();
 
@@ -272,7 +298,8 @@ Provide only the improved code without any explanation or markdown formatting.`;
             : message;
 
         try {
-            const result = await this.model.generateContent(prompt);
+            const model = this.ensureModel();
+            const result = await model.generateContent(prompt);
             const response = await result.response;
             return response.text();
         } catch (error: any) {
@@ -282,4 +309,5 @@ Provide only the improved code without any explanation or markdown formatting.`;
     }
 }
 
+// Export service instance - constructor no longer throws, so safe for build-time
 export const geminiService = new GeminiService();
