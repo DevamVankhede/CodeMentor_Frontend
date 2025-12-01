@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import Card, { CardContent } from '@/components/ui/Card';
+import Card, { CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import {
   Sparkles, Bug, RefreshCw, MessageSquare, Zap, CheckCircle,
@@ -24,6 +24,7 @@ export default function AICodeEditor({
   const [loading, setLoading] = useState(false);
   const [activeFeature, setActiveFeature] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [consoleOutput, setConsoleOutput] = useState<string[]>([]);
 
   const handleCodeChange = (newCode: string) => {
     setCode(newCode);
@@ -41,6 +42,9 @@ export default function AICodeEditor({
       });
       const data = await response.json();
       setAnalysis(data);
+      if (data?.summary) {
+        setConsoleOutput([`Analysis summary: ${data.summary}`]);
+      }
     } catch (error) {
       console.error('Error analyzing code:', error);
     } finally {
@@ -60,6 +64,9 @@ export default function AICodeEditor({
       const data = await response.json();
       if (data.refactoredCode) {
         handleCodeChange(data.refactoredCode);
+        setConsoleOutput([
+          'Refactor complete. Preview the updated code above.'
+        ]);
       }
     } catch (error) {
       console.error('Error refactoring code:', error);
@@ -80,6 +87,9 @@ export default function AICodeEditor({
       });
       const data = await response.json();
       setExplanation(data);
+      if (data?.explanation) {
+        setConsoleOutput(data.explanation.split('\n'));
+      }
     } catch (error) {
       console.error('Error explaining code:', error);
     } finally {
@@ -99,6 +109,7 @@ export default function AICodeEditor({
       const data = await response.json();
       if (data.code) {
         handleCodeChange(data.code);
+        setConsoleOutput(['Bugs fixed. Review the changes in your code.']);
       }
     } catch (error) {
       console.error('Error fixing bugs:', error);
@@ -120,6 +131,7 @@ export default function AICodeEditor({
       const data = await response.json();
       if (data.code) {
         handleCodeChange(data.code);
+        setConsoleOutput([`Quality improved for: ${aspect}`]);
       }
     } catch (error) {
       console.error('Error improving quality:', error);
@@ -156,7 +168,7 @@ export default function AICodeEditor({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Code Editor */}
-      <div className="lg:col-span-2">
+      <div className="lg:col-span-2 flex flex-col gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -177,7 +189,7 @@ export default function AICodeEditor({
             <textarea
               value={code}
               onChange={(e) => handleCodeChange(e.target.value)}
-              className="w-full h-96 bg-slate-950 text-slate-200 rounded-lg p-4 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full h-96 bg-surface-secondary text-text-primary rounded-lg p-4 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 border border-border-primary"
               placeholder="Paste your code here..."
             />
 
@@ -250,8 +262,33 @@ export default function AICodeEditor({
         </Card>
       </div>
 
-      {/* Analysis Panel */}
+      {/* Analysis + Console Panel */}
       <div className="space-y-6">
+        {/* Execution / Output Console */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold text-text-primary flex items-center gap-2">
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              Console
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 rounded-lg bg-surface-secondary border border-border-primary p-3 font-mono text-xs overflow-auto text-text-primary">
+              {consoleOutput.length === 0 ? (
+                <p className="text-text-tertiary">
+                  AI messages and important results will appear here.
+                </p>
+              ) : (
+                consoleOutput.map((line, idx) => (
+                  <div key={idx} className="whitespace-pre-wrap">
+                    {line}
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Code Analysis */}
         {analysis && (
           <Card>

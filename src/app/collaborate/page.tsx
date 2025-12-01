@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import Cookies from "js-cookie";
@@ -123,6 +124,8 @@ export default function CollaboratePage() {
     { id: "typescript", name: "TypeScript", icon: "🔷" },
   ];
 
+  const searchParams = useSearchParams();
+
   const fetchSessions = async () => {
     try {
       setLoading(true);
@@ -186,10 +189,16 @@ export default function CollaboratePage() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchSessions();
-    }
-  }, [isAuthenticated]);
+    if (!isAuthenticated) return;
+
+    fetchSessions().then(() => {
+      const joinId = searchParams?.get("join");
+      if (joinId) {
+        // Try to join the session that was shared via link
+        joinSession(joinId);
+      }
+    });
+  }, [isAuthenticated, searchParams]);
 
   const createSession = async () => {
     try {
@@ -441,7 +450,7 @@ export default function CollaboratePage() {
 
   const copySessionLink = async (sessionId: string) => {
     try {
-      const link = `${window.location.origin}/collaborate/${sessionId}`;
+      const link = `${window.location.origin}/collaborate?join=${sessionId}`;
       await navigator.clipboard.writeText(link);
       console.log("Session link copied to clipboard:", link);
       alert("Session link copied to clipboard!");

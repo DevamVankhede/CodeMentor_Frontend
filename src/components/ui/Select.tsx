@@ -25,9 +25,10 @@ export default function Select({
       )}
       <select
         className={[
-          "w-full px-3 py-2 bg-surface-secondary border rounded-lg",
-          "text-text-primary placeholder-text-tertiary",
-          "focus:outline-none focus:ring-2 focus:ring-primary-500",
+          "w-full px-3 py-2 rounded-lg border",
+          "bg-surface-secondary text-text-primary placeholder-text-tertiary",
+          "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500",
+          "appearance-none",
           error ? "border-red-500" : "border-border-primary",
           className,
         ]
