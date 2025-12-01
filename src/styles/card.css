@@ -15,8 +15,7 @@
 }
 
 .card-glass {
-  background-color: rgba(var(--card-rgb), 0.4); /* bg-card/40 */
-  backdrop-filter: blur(16px); /* backdrop-blur-md */
+  background-color: var(--card); /* Solid background, no transparency */
   border: 1px solid var(--border);
 }
 

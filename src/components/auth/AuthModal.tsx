@@ -318,7 +318,7 @@ export default function AuthPortal({ isOpen = true, onClose = () => console.log(
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-[380px] relative z-10 my-auto"
       >
-        <div className="backdrop-blur-xl bg-slate-900/60 border border-slate-700/50 shadow-2xl rounded-2xl overflow-hidden ring-1 ring-white/10 relative">
+        <div className="bg-card border border-border shadow-2xl rounded-2xl overflow-hidden relative">
 
           {/* Close Button */}
           <button

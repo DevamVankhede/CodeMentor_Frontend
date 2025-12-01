@@ -246,9 +246,9 @@ export default function Navigation() {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
-              className="md:hidden border-t border-border overflow-hidden"
+              className="md:hidden border-t border-border overflow-hidden bg-card"
             >
-              <div className="py-4 px-2 space-y-1">
+              <div className="py-4 px-4 space-y-2 bg-card">
                 {navigationItems.map((item) => {
                   const isVisible =
                     item.public ||

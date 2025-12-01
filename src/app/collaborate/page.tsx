@@ -10,7 +10,6 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Textarea from "@/components/ui/Textarea";
 import Select from "@/components/ui/Select";
-import CollaborationHub from "@/components/collaboration/CollaborationHub";
 import SimpleCollaborationHub from "@/components/collaboration/SimpleCollaborationHub";
 import {
   Users,
@@ -22,7 +21,6 @@ import {
   Star,
   Play,
   Copy,
-  ArrowLeft,
   Trash2,
 } from "lucide-react";
 
@@ -664,10 +662,10 @@ function CollaboratePageInner() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl font-bold text-text-primary mb-4">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-text-primary mb-4">
             👥 Collaborative Coding
           </h1>
-          <p className="text-text-secondary text-lg max-w-2xl mx-auto">
+          <p className="text-text-secondary text-sm sm:text-base lg:text-lg max-w-2xl mx-auto px-4">
             Code together in real-time with developers around the world. Share
             knowledge, solve problems, and build amazing projects together!
           </p>
@@ -678,7 +676,7 @@ function CollaboratePageInner() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="flex flex-col sm:flex-row gap-4 mb-8"
+          className="flex flex-col sm:flex-row gap-4 mb-8 px-4"
         >
           <Button
             size="lg"
@@ -713,7 +711,7 @@ function CollaboratePageInner() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 {renderSessionsContent()}
               </div>
             </CardContent>
@@ -779,11 +777,11 @@ function CollaboratePageInner() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
           onClick={() => setShowCreateModal(false)}
         >
           <Card
-            className="w-full max-w-md"
+            className="w-full max-w-md mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <CardHeader>

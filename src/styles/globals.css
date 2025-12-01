@@ -6,11 +6,11 @@
   --brand-accent: #10b981; /* Emerald 500 */
 
   /* Themed Colors (Dark by Default) */
-  --background-primary: #1a1a2e;
-  --background-secondary: #16213e;
-  --background-tertiary: #0f3460;
-  --background-card: rgba(27, 38, 59, 0.7); /* Darker glass effect */
-  --background-hover: rgba(45, 64, 89, 0.5);
+  --background-primary: #0b1020;
+  --background-secondary: #111827;
+  --background-tertiary: #020617;
+  --background-card: #0f172a; /* Solid card background, no transparency */
+  --background-hover: #1e293b; /* Slightly lighter solid hover */
 
   --text-primary: #e0e0e0;
   --text-secondary: #a0a0a0;
@@ -35,7 +35,7 @@
   --gradient-error: linear-gradient(135deg, #ef4444 0%, #f472b6 100%);
 
   /* Glass Effect */
-  --glass-bg: rgba(255, 255, 255, 0.05); /* Lighter for subtle effect on dark */
+  --glass-bg: #0f172a; /* Match solid card background, no transparency */
   --glass-border: rgba(255, 255, 255, 0.1);
   --glass-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.3);
 
@@ -68,7 +68,7 @@
 [data-theme="dark"],
 :root {
   /* Ensure these variables are applied as primary */
-  --glass-bg: rgba(0, 0, 0, 0.3);
+  --glass-bg: #0f172a;
   --glass-border: rgba(255, 255, 255, 0.1);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 
