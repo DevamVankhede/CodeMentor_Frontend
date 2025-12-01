@@ -10,18 +10,23 @@ import {
   Video,
   VideoOff,
   Crown,
+  Send,
+  X,
+  Settings,
+  MoreVertical,
+  Code2
 } from "lucide-react";
-import Button from "@/components/ui/Button";
-import PerfectAICodeEditor from "@/components/editor/PerfectAICodeEditor";
+import { motion, AnimatePresence } from "framer-motion";
+
+// --- Types ---
 
 interface Collaborator {
   id: string;
   name: string;
-  avatar?: string;
   isOwner: boolean;
   isActive: boolean;
   cursor?: { line: number; column: number };
-  color: string; // Add color for cursor and chat
+  color: string;
 }
 
 interface ChatMessage {
@@ -30,137 +35,127 @@ interface ChatMessage {
   message: string;
   timestamp: Date;
   type: "message" | "system";
-  color?: string; // Add color to chat messages
+  color?: string;
 }
 
-interface CollaborationHubProps {
-  readonly roomId: string;
-  readonly isOwner?: boolean;
-}
+// --- Constants ---
 
 const USER_COLORS = [
-  "#E57373",
-  "#81C784",
-  "#64B5F6",
-  "#FFD54F",
-  "#BA68C8",
-  "#4DB6AC",
+  "#818cf8", // Indigo 400
+  "#34d399", // Emerald 400
+  "#f472b6", // Pink 400
+  "#fbbf24", // Amber 400
+  "#60a5fa", // Blue 400
+  "#c084fc", // Purple 400
 ];
 
-export default function CollaborationHub({
-  roomId,
-  isOwner = false,
-}: CollaborationHubProps) {
+// --- Sub-Components ---
+
+const Avatar = ({ name, color, size = "sm" }: { name: string; color: string; size?: "sm" | "md" }) => {
+  const initials = name.split(" ").map(n => n[0]).join("").substring(0, 2);
+  const sizeClasses = size === "sm" ? "w-6 h-6 text-xs" : "w-8 h-8 text-sm";
+
+  return (
+    <div
+      className={`${sizeClasses} rounded flex items-center justify-center font-bold text-zinc-950 shadow-sm`}
+      style={{ backgroundColor: color }}
+    >
+      {initials}
+    </div>
+  );
+};
+
+const IconButton = ({ active, onClick, icon: Icon, label, variant = "default" }: any) => {
+  const baseClass = "p-2 rounded-lg transition-all duration-200 flex items-center justify-center";
+  const variants = {
+    default: active
+      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-900/20"
+      : "bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700",
+    danger: active
+      ? "bg-zinc-800 text-zinc-400 hover:text-zinc-100"
+      : "bg-red-500/10 text-red-400 hover:bg-red-500/20",
+    ghost: active
+      ? "bg-zinc-800 text-zinc-100"
+      : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`${baseClass} ${active ? variants.default : variants.ghost}`}
+      title={label}
+    >
+      <Icon className="w-4 h-4" />
+    </button>
+  );
+};
+
+// --- Main Component ---
+
+export default function CollaborationHub() {
+  // State
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [showChat, setShowChat] = useState(true);
-  const [showParticipants, setShowParticipants] = useState(true);
+  const [activeTab, setActiveTab] = useState<"chat" | "participants">("chat");
   const [code, setCode] = useState(`// Welcome to collaborative coding!
 // Start typing to see real-time collaboration
 
-function hello() {
-  console.log("Hello, team!");
+function initializeSystem() {
+  console.log("System booting...");
+  const team = ["Alex", "Sarah", "You"];
+  
+  team.forEach(member => {
+    console.log(\`Hello \${member}, ready to code?\`);
+  });
 }`);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const getInitialCollaborators = (isOwner: boolean): Collaborator[] => {
-    return [
-      {
-        id: "1",
-        name: "You",
-        isOwner: isOwner,
-        isActive: true,
-        color: USER_COLORS[0],
-      },
-      {
-        id: "2",
-        name: "Alex CodeMaster",
-        isOwner: false,
-        isActive: true,
-        cursor: { line: 5, column: 10 },
-        color: USER_COLORS[1],
-      },
-      {
-        id: "3",
-        name: "Sarah DevQueen",
-        isOwner: false,
-        isActive: true,
-        cursor: { line: 2, column: 15 },
-        color: USER_COLORS[2],
-      },
-    ];
-  };
-
-  const getInitialChatMessages = (): ChatMessage[] => {
-    return [
-      {
-        id: "1",
-        user: "System",
-        message: "Welcome to the collaboration session!",
-        timestamp: new Date(),
-        type: "system",
-      },
-      {
-        id: "2",
-        user: "Alex CodeMaster",
-        message: "Hey everyone! Ready to code together?",
-        timestamp: new Date(),
-        type: "message",
-        color: USER_COLORS[1],
-      },
-    ];
-  };
+  // --- Mock Data & Effects ---
 
   useEffect(() => {
-    // Initialize SignalR connection here
-    // This would connect to the CollaborationHub on the backend
-    setCollaborators(getInitialCollaborators(isOwner));
-    setChatMessages(getInitialChatMessages());
+    // Initial Data
+    setCollaborators([
+      { id: "1", name: "You", isOwner: true, isActive: true, color: USER_COLORS[0] },
+      { id: "2", name: "Alex CodeMaster", isOwner: false, isActive: true, cursor: { line: 5, column: 10 }, color: USER_COLORS[1] },
+      { id: "3", name: "Sarah DevQueen", isOwner: false, isActive: true, cursor: { line: 8, column: 15 }, color: USER_COLORS[2] },
+    ]);
 
-    return () => {
-      // Cleanup connection
-    };
-  }, [roomId, isOwner]);
+    setChatMessages([
+      { id: "1", user: "System", message: "Session initialized. v2.4.0", timestamp: new Date(), type: "system" },
+      { id: "2", user: "Alex CodeMaster", message: "Hey team, looking at the cursor logic now.", timestamp: new Date(), type: "message", color: USER_COLORS[1] },
+      { id: "3", user: "Sarah DevQueen", message: "I'll handle the UI components.", timestamp: new Date(), type: "message", color: USER_COLORS[2] },
+    ]);
 
-  useEffect(() => {
-    scrollToBottom();
-    if (showChat) {
-      setUnreadMessages(0);
-    }
-  }, [chatMessages, showChat]);
-
-  const simulateCollaboratorCursorMove = (
-    prevCollabs: Collaborator[]
-  ): Collaborator[] => {
-    return prevCollabs.map((collab) => {
-      if (collab.id !== "1") {
-        return {
-          ...collab,
-          cursor: {
-            line: Math.max(1, Math.floor(Math.random() * 10) + 1),
-            column: Math.max(1, Math.floor(Math.random() * 20) + 1),
-          },
-        };
-      }
-      return collab;
-    });
-  };
-
-  useEffect(() => {
+    // Cursor Simulation
     const interval = setInterval(() => {
-      setCollaborators(simulateCollaboratorCursorMove);
-    }, 3000);
+      setCollaborators((prev) => prev.map((c) => {
+        if (c.id !== "1") {
+          return {
+            ...c,
+            cursor: {
+              line: Math.max(1, Math.floor(Math.random() * 12) + 1),
+              column: Math.max(1, Math.floor(Math.random() * 30) + 1),
+            }
+          };
+        }
+        return c;
+      }));
+    }, 2500);
 
     return () => clearInterval(interval);
-  }, []); // Empty dependency array as simulateCollaboratorCursorMove is pure
+  }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages, activeTab]);
+
+  // --- Handlers ---
 
   const sendMessage = () => {
     if (!newMessage.trim()) return;
-
     const message: ChatMessage = {
       id: Date.now().toString(),
       user: "You",
@@ -169,291 +164,215 @@ function hello() {
       type: "message",
       color: USER_COLORS[0],
     };
-
-    setChatMessages((prev) => {
-      const newMessages = [...prev, message];
-      if (!showChat) {
-        setUnreadMessages((prevCount) => prevCount + 1);
-      }
-      return newMessages;
-    });
+    setChatMessages((prev) => [...prev, message]);
     setNewMessage("");
   };
 
-  const copyRoomLink = () => {
-    const link = `${window.location.origin}/collaborate/${roomId}`;
-    navigator.clipboard.writeText(link);
-    // Show toast notification
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
   };
 
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const handleCodeChange = (newCode: string) => {
-    setCode(newCode);
-    // In a real scenario, this would send code changes via SignalR
-    // You'd also receive changes from others and apply them to the editor
-  };
-
-  const handleCursorChange = (position: {
-    lineNumber: number;
-    column: number;
-  }) => {
-    setCollaborators((prev) =>
-      prev.map((collab) =>
-        collab.id === "1"
-          ? {
-            ...collab,
-            cursor: { line: position.lineNumber, column: position.column },
-          }
-          : collab
-      )
-    );
-    // In a real scenario, this would send cursor position via SignalR
-  };
-
-  const toggleAudio = () => {
-    setIsAudioEnabled(!isAudioEnabled);
-    // Implement WebRTC audio toggle
-  };
-
-  const toggleVideo = () => {
-    setIsVideoEnabled(!isVideoEnabled);
-    // Implement WebRTC video toggle
-  };
+  // --- Render ---
 
   return (
-    <div className="h-screen flex bg-bg-primary">
-      {/* Main Editor Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border-primary bg-surface-secondary">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-text-primary">
-              Collaborative Session
-            </h1>
-            <div className="flex items-center gap-2 text-sm text-text-secondary">
-              <Users className="w-4 h-4" />
-              {collaborators.filter((c) => c.isActive).length} active
+    <div className="h-screen w-full bg-zinc-950 text-zinc-100 flex overflow-hidden font-sans">
+
+      {/* 1. MAIN AREA (Editor) */}
+      <div className="flex-1 flex flex-col min-w-0">
+
+        {/* Header Toolbar */}
+        <div className="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-500/10 rounded-lg">
+              <Code2 className="w-5 h-5 text-indigo-400" />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold text-zinc-100">Project_Alpha_v2.tsx</h1>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs text-zinc-500">Live Session</span>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Voice/Video Controls */}
-            <Button
-              size="sm"
-              variant={isAudioEnabled ? "primary" : "outline"}
-              onClick={toggleAudio}
-              leftIcon={
-                isAudioEnabled ? (
-                  <Mic className="w-4 h-4" />
-                ) : (
-                  <MicOff className="w-4 h-4" />
-                )
-              }
-            >
-              {isAudioEnabled ? "Mute" : "Unmute"}
-            </Button>
+            <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 mr-2">
+              <IconButton
+                active={isAudioEnabled}
+                onClick={() => setIsAudioEnabled(!isAudioEnabled)}
+                icon={isAudioEnabled ? Mic : MicOff}
+                label="Toggle Mic"
+              />
+              <IconButton
+                active={isVideoEnabled}
+                onClick={() => setIsVideoEnabled(!isVideoEnabled)}
+                icon={isVideoEnabled ? Video : VideoOff}
+                label="Toggle Video"
+              />
+            </div>
 
-            <Button
-              size="sm"
-              variant={isVideoEnabled ? "primary" : "outline"}
-              onClick={toggleVideo}
-              leftIcon={
-                isVideoEnabled ? (
-                  <Video className="w-4 h-4" />
-                ) : (
-                  <VideoOff className="w-4 h-4" />
-                )
-              }
-            >
-              {isVideoEnabled ? "Stop Video" : "Start Video"}
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={copyRoomLink}
-              leftIcon={<Share2 className="w-4 h-4" />}
-            >
-              Share Room
-            </Button>
-
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowParticipants(!showParticipants)}
-              leftIcon={<Users className="w-4 h-4" />}
-            >
-              Participants
-            </Button>
-
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowChat(!showChat)}
-              leftIcon={
-                <div className="relative">
-                  <MessageSquare className="w-4 h-4" />
-                  {unreadMessages > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                      {unreadMessages}
-                    </span>
-                  )}
-                </div>
-              }
-            >
-              Chat
-            </Button>
+            <button className="h-9 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-indigo-900/20">
+              <Share2 className="w-4 h-4" /> Share
+            </button>
           </div>
         </div>
 
-        {/* Code Editor */}
-        <div className="flex-1">
-          <PerfectAICodeEditor
-            initialCode={code}
-            language="javascript"
-            collaborative={true}
-            roomId={roomId}
-            onCodeChange={handleCodeChange}
-            onCursorChange={handleCursorChange}
-            collaborators={collaborators} // Pass collaborators to the editor
-          />
+        {/* Mock Code Editor */}
+        <div className="flex-1 relative bg-zinc-950 overflow-hidden flex">
+          {/* Line Numbers */}
+          <div className="w-12 bg-zinc-950 border-r border-zinc-800 pt-4 flex flex-col items-end pr-3 text-zinc-600 font-mono text-sm select-none">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div key={i} className="leading-6">{i + 1}</div>
+            ))}
+          </div>
+
+          {/* Code Area */}
+          <div className="flex-1 relative font-mono text-sm">
+            <textarea
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="w-full h-full bg-transparent text-zinc-300 p-4 leading-6 focus:outline-none resize-none z-10 relative"
+              spellCheck={false}
+            />
+
+            {/* Simulated Cursors Overlay */}
+            <div className="absolute inset-0 pointer-events-none p-4">
+              {collaborators.filter(c => c.id !== "1" && c.cursor).map(collab => (
+                <motion.div
+                  key={collab.id}
+                  initial={false}
+                  animate={{
+                    top: (collab.cursor!.line - 1) * 24, // Approx line height
+                    left: collab.cursor!.column * 8.5 // Approx char width
+                  }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  className="absolute w-0.5 h-5"
+                  style={{ backgroundColor: collab.color }}
+                >
+                  <div
+                    className="absolute -top-6 left-0 px-2 py-0.5 rounded text-[10px] font-bold text-zinc-950 whitespace-nowrap opacity-100 transition-opacity"
+                    style={{ backgroundColor: collab.color }}
+                  >
+                    {collab.name}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Right Sidebar */}
-      <div className="w-80 border-l border-border-primary bg-surface-secondary flex flex-col">
-        {/* Participants Panel */}
-        {showParticipants && (
-          <div className="border-b border-border-primary">
-            <div className="p-4">
-              <h3 className="font-semibold text-text-primary mb-3 flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Participants ({collaborators.length})
-              </h3>
+      {/* 2. RIGHT SIDEBAR */}
+      <div className="w-80 bg-zinc-900 border-l border-zinc-800 flex flex-col shrink-0">
 
-              <div className="space-y-2">
-                {collaborators.map((collaborator) => (
-                  <div
-                    key={collaborator.id}
-                    className="flex items-center gap-3 p-2 rounded-lg bg-surface-primary"
-                  >
-                    <div
-                      className={`w-2 h-2 rounded-full ${collaborator.isActive ? "bg-green-500" : "bg-gray-500"
-                        }`}
-                    />
+        {/* Tabs */}
+        <div className="flex border-b border-zinc-800">
+          <button
+            onClick={() => setActiveTab("chat")}
+            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${activeTab === "chat" ? "border-indigo-500 text-zinc-100" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
+          >
+            <MessageSquare className="w-4 h-4" /> Chat
+          </button>
+          <button
+            onClick={() => setActiveTab("participants")}
+            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${activeTab === "participants" ? "border-indigo-500 text-zinc-100" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}
+          >
+            <Users className="w-4 h-4" /> Team <span className="bg-zinc-800 text-zinc-400 px-1.5 rounded-full text-xs">{collaborators.length}</span>
+          </button>
+        </div>
 
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-text-primary">
-                          {collaborator.name}
-                        </span>
-                        {collaborator.isOwner && (
-                          <Crown className="w-3 h-3 text-yellow-500" />
-                        )}
-                      </div>
-                      {collaborator.cursor && (
-                        <div className="text-xs text-text-tertiary">
-                          Line {collaborator.cursor.line}, Col{" "}
-                          {collaborator.cursor.column}
+        {/* Tab Content */}
+        <div className="flex-1 overflow-hidden relative">
+
+          {/* CHAT TAB */}
+          {activeTab === "chat" && (
+            <div className="absolute inset-0 flex flex-col">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                {chatMessages.map((msg) => (
+                  <div key={msg.id} className={`flex flex-col ${msg.type === "system" ? "items-center my-2" : "items-start"}`}>
+                    {msg.type === "system" ? (
+                      <span className="text-[10px] font-medium text-zinc-600 bg-zinc-950/50 px-2 py-1 rounded-full uppercase tracking-wider">{msg.message}</span>
+                    ) : (
+                      <div className="flex gap-3 w-full group">
+                        <Avatar name={msg.user} color={msg.color || "#71717a"} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between mb-1">
+                            <span className="text-xs font-bold text-zinc-300">{msg.user}</span>
+                            <span className="text-[10px] text-zinc-600">{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <div className="text-sm text-zinc-400 leading-relaxed break-words">
+                            {msg.message}
+                          </div>
                         </div>
-                      )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Input Area */}
+              <div className="p-4 border-t border-zinc-800 bg-zinc-900">
+                <div className="relative">
+                  <textarea
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type a message..."
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-4 pr-12 py-3 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all resize-none h-12 custom-scrollbar"
+                  />
+                  <button
+                    onClick={sendMessage}
+                    disabled={!newMessage.trim()}
+                    className="absolute right-2 top-2 p-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md disabled:opacity-50 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all"
+                  >
+                    <Send className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PARTICIPANTS TAB */}
+          {activeTab === "participants" && (
+            <div className="p-4 space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Online - {collaborators.length}</h3>
+                <button className="p-1 hover:bg-zinc-800 rounded text-zinc-500"><Settings className="w-4 h-4" /></button>
+              </div>
+
+              <div className="space-y-1">
+                {collaborators.map((collab) => (
+                  <div key={collab.id} className="group flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50 transition-colors border border-transparent hover:border-zinc-800">
+                    <div className="relative">
+                      <Avatar name={collab.name} color={collab.color} />
+                      {collab.isActive && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-zinc-900 rounded-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" /></div>}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-zinc-200 truncate">{collab.name}</span>
+                        {collab.isOwner && <Crown className="w-3 h-3 text-amber-500 fill-amber-500/20" />}
+                      </div>
+                      <div className="text-xs text-zinc-500 truncate">
+                        {collab.isActive ? "Editing file..." : "Away"}
+                      </div>
+                    </div>
+                    <button className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-zinc-700 rounded text-zinc-400 transition-all">
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
                   </div>
                 ))}
               </div>
 
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full mt-3"
-                leftIcon={<UserPlus className="w-4 h-4" />}
-              >
-                Invite More
-              </Button>
+              <button className="w-full mt-4 py-2 border border-dashed border-zinc-700 rounded-lg text-zinc-500 hover:text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800/50 transition-all text-sm flex items-center justify-center gap-2">
+                <UserPlus className="w-4 h-4" /> Invite Collaborator
+              </button>
             </div>
-          </div>
-        )}
-
-        {/* Chat Panel */}
-        {showChat && (
-          <div className="flex-1 flex flex-col">
-            <div className="p-4 border-b border-border-primary">
-              <h3 className="font-semibold text-text-primary flex items-center gap-2">
-                <MessageSquare className="w-4 h-4" />
-                Team Chat
-                {unreadMessages > 0 && !showChat && (
-                  <span className="ml-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {unreadMessages}
-                  </span>
-                )}
-              </h3>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {chatMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`${message.type === "system"
-                    ? "text-center text-xs text-text-tertiary"
-                    : ""
-                    }`}
-                >
-                  {message.type === "system" ? (
-                    <div className="italic">{message.message}</div>
-                  ) : (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="text-xs font-medium text-text-secondary"
-                          style={{ color: message.color }}
-                        >
-                          {message.user}
-                        </span>
-                        <span className="text-xs text-text-tertiary">
-                          {message.timestamp.toLocaleTimeString()}
-                        </span>
-                      </div>
-                      <div className="text-sm text-text-primary bg-surface-primary p-2 rounded">
-                        {message.message}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Message Input */}
-            <div className="p-4 border-t border-border-primary">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault(); // Prevent new line in input
-                      sendMessage();
-                    }
-                  }}
-                  placeholder="Type a message..."
-                  className="flex-1 px-3 py-2 bg-surface-primary border border-border-primary rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <Button
-                  size="sm"
-                  onClick={sendMessage}
-                  disabled={!newMessage.trim()}
-                >
-                  Send
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

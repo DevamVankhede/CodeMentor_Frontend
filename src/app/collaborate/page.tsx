@@ -47,6 +47,8 @@ function CollaboratePageInner() {
   const { isAuthenticated } = useAuth();
   const [activeSession, setActiveSession] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
   const [sessions, setSessions] = useState<CollaborationSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [newSession, setNewSession] = useState({
@@ -141,8 +143,7 @@ function CollaboratePageInner() {
           console.log("Fetching sessions from API...");
 
           const response = await fetch(
-            `${
-              process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
             }/api/collaboration/sessions`,
             {
               headers: {
@@ -209,8 +210,7 @@ function CollaboratePageInner() {
       if (token) {
         try {
           const response = await fetch(
-            `${
-              process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
             }/api/collaboration/sessions`,
             {
               method: "POST",
@@ -341,8 +341,7 @@ function CollaboratePageInner() {
       if (token) {
         try {
           const response = await fetch(
-            `${
-              process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
             }/api/collaboration/sessions/${sessionId}/join`,
             {
               method: "POST",
@@ -382,9 +381,9 @@ function CollaboratePageInner() {
         prevSessions.map((s) =>
           s.id === sessionId
             ? {
-                ...s,
-                participants: Math.min(s.participants + 1, s.maxParticipants),
-              }
+              ...s,
+              participants: Math.min(s.participants + 1, s.maxParticipants),
+            }
             : s
         )
       );
@@ -392,13 +391,13 @@ function CollaboratePageInner() {
       // Update localStorage
       const storedSessions = JSON.parse(
         localStorage.getItem("collaboration-sessions") || "[]"
-      );
-      const updatedStoredSessions = storedSessions.map((s) =>
+      ) as CollaborationSession[];
+      const updatedStoredSessions = storedSessions.map((s: CollaborationSession) =>
         s.id === sessionId
           ? {
-              ...s,
-              participants: Math.min(s.participants + 1, s.maxParticipants),
-            }
+            ...s,
+            participants: Math.min(s.participants + 1, s.maxParticipants),
+          }
           : s
       );
       localStorage.setItem(
@@ -434,9 +433,9 @@ function CollaboratePageInner() {
       // Remove from localStorage
       const storedSessions = JSON.parse(
         localStorage.getItem("collaboration-sessions") || "[]"
-      );
+      ) as CollaborationSession[];
       const updatedStoredSessions = storedSessions.filter(
-        (s) => s.id !== sessionId
+        (s: CollaborationSession) => s.id !== sessionId
       );
       localStorage.setItem(
         "collaboration-sessions",
@@ -461,6 +460,26 @@ function CollaboratePageInner() {
         "Copy this session link:",
         `${window.location.origin}/collaborate/${sessionId}`
       );
+    }
+  };
+
+  const handleJoinWithCode = () => {
+    if (!joinCode.trim()) {
+      alert("Please enter a session code");
+      return;
+    }
+
+    // Try to find session by ID or roomId
+    const session = sessions.find(
+      (s) => s.id === joinCode || s.roomId === joinCode
+    );
+
+    if (session) {
+      joinSession(session.id);
+      setShowJoinModal(false);
+      setJoinCode("");
+    } else {
+      alert("Session not found. Please check the code and try again.");
     }
   };
 
@@ -690,6 +709,7 @@ function CollaboratePageInner() {
           <Button
             size="lg"
             variant="outline"
+            onClick={() => setShowJoinModal(true)}
             leftIcon={<Code2 className="w-5 h-5" />}
             className="flex-1"
           >
@@ -777,7 +797,7 @@ function CollaboratePageInner() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black flex items-center justify-center z-50 p-4"
           onClick={() => setShowCreateModal(false)}
         >
           <Card
@@ -870,6 +890,67 @@ function CollaboratePageInner() {
                     disabled={!newSession.name.trim()}
                   >
                     Create Session
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Join with Code Modal */}
+      {showJoinModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black flex items-center justify-center z-50 p-4"
+          onClick={() => setShowJoinModal(false)}
+        >
+          <Card
+            className="w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader>
+              <CardTitle>Join with Code</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Input
+                    id="joinCode"
+                    label="Session Code"
+                    type="text"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleJoinWithCode();
+                      }
+                    }}
+                    placeholder="Enter session code or ID"
+                  />
+                  <p className="text-xs text-text-tertiary mt-2">
+                    Enter the session code shared by the host
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowJoinModal(false);
+                      setJoinCode("");
+                    }}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleJoinWithCode}
+                    className="flex-1"
+                    disabled={!joinCode.trim()}
+                  >
+                    Join Session
                   </Button>
                 </div>
               </div>

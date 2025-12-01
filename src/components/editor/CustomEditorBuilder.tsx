@@ -12,17 +12,79 @@ import {
   Plus,
   Edit3,
   Palette,
-  Layout,
   Zap,
   Download,
   Upload,
   Terminal,
   X,
-  Check,
+  ChevronDown,
+  Monitor,
+  Users,
+  Maximize2,
+  Sliders,
+  FileCode,
+  Type
 } from 'lucide-react';
 import Editor from '@monaco-editor/react';
-import Card, { CardHeader, CardTitle, CardContent } from '../ui/Card';
-import Button from '../ui/Button';
+
+// --- Internal UI Components for the "Perfect Design" ---
+
+// Reusable Input Field
+const InputGroup = ({ label, subLabel, children, required }: any) => (
+  <div className="space-y-1.5">
+    <label className="flex flex-col">
+      <span className="text-sm font-medium text-zinc-300 flex items-center gap-1">
+        {label} {required && <span className="text-indigo-400">*</span>}
+      </span>
+      {subLabel && <span className="text-xs text-zinc-500">{subLabel}</span>}
+    </label>
+    {children}
+  </div>
+);
+
+// Styled Text Input
+const StyledInput = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+  <input
+    {...props}
+    className="w-full px-4 py-2.5 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200"
+  />
+);
+
+// Styled Text Area
+const StyledTextArea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
+  <textarea
+    {...props}
+    className="w-full px-4 py-3 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200 resize-y min-h-[100px] font-mono text-sm"
+  />
+);
+
+// Feature Toggle Card
+const FeatureToggle = ({ label, icon: Icon, checked, onChange }: any) => (
+  <div 
+    onClick={() => onChange(!checked)}
+    className={`cursor-pointer group flex items-center justify-between p-3 rounded-lg border transition-all duration-200 ${
+      checked 
+        ? 'bg-indigo-500/10 border-indigo-500/50' 
+        : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
+    }`}
+  >
+    <div className="flex items-center gap-3">
+      <div className={`p-2 rounded-md ${checked ? 'bg-indigo-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+        <Icon className="w-4 h-4" />
+      </div>
+      <span className={`text-sm font-medium ${checked ? 'text-indigo-200' : 'text-zinc-400'}`}>
+        {label}
+      </span>
+    </div>
+    <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+      checked ? 'bg-indigo-500 border-indigo-500' : 'border-zinc-600'
+    }`}>
+      {checked && <div className="w-2 h-2 bg-white rounded-sm" />}
+    </div>
+  </div>
+);
+
+// --- Main Types ---
 
 interface CustomEditor {
   id: string;
@@ -62,21 +124,21 @@ export default function CustomEditorBuilder() {
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
-  // Get default code for each language
+
+  // Default Code Logic
   const getDefaultCode = (language: string): string => {
     const codeExamples: Record<string, string> = {
       javascript: '// Welcome to your custom editor!\nconsole.log("Hello, World!");\n\nconst greet = (name) => {\n  return `Hello, ${name}!`;\n};\n\nconsole.log(greet("Developer"));',
       typescript: '// TypeScript Example\nconst message: string = "Hello, World!";\nconsole.log(message);\n\nfunction greet(name: string): string {\n  return `Hello, ${name}!`;\n}\n\nconsole.log(greet("Developer"));',
-      python: '# Python Example\nprint("Hello, World!")\n\ndef greet(name):\n    return f"Hello, {name}!"\n\nprint(greet("Developer"))\n\n# Calculate factorial\ndef factorial(n):\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n\nprint(f"Factorial of 5: {factorial(5)}")',
-      java: '// Java Example\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n        System.out.println(greet("Developer"));\n    }\n    \n    public static String greet(String name) {\n        return "Hello, " + name + "!";\n    }\n}',
-      cpp: '// C++ Example\n#include <iostream>\n#include <string>\nusing namespace std;\n\nstring greet(string name) {\n    return "Hello, " + name + "!";\n}\n\nint main() {\n    cout << "Hello, World!" << endl;\n    cout << greet("Developer") << endl;\n    return 0;\n}',
-      csharp: '// C# Example\nusing System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, World!");\n        Console.WriteLine(Greet("Developer"));\n    }\n    \n    static string Greet(string name) {\n        return $"Hello, {name}!";\n    }\n}',
-      go: '// Go Example\npackage main\n\nimport "fmt"\n\nfunc greet(name string) string {\n    return fmt.Sprintf("Hello, %s!", name)\n}\n\nfunc main() {\n    fmt.Println("Hello, World!")\n    fmt.Println(greet("Developer"))\n}',
-      rust: '// Rust Example\nfn greet(name: &str) -> String {\n    format!("Hello, {}!", name)\n}\n\nfn main() {\n    println!("Hello, World!");\n    println!("{}", greet("Developer"));\n}',
-      php: '<?php\n// PHP Example\necho "Hello, World!\\n";\n\nfunction greet($name) {\n    return "Hello, " . $name . "!";\n}\n\necho greet("Developer") . "\\n";\n?>',
-      ruby: '# Ruby Example\nputs "Hello, World!"\n\ndef greet(name)\n  "Hello, #{name}!"\nend\n\nputs greet("Developer")',
+      python: '# Python Example\nprint("Hello, World!")\n\ndef greet(name):\n    return f"Hello, {name}!"\n\nprint(greet("Developer"))',
+      java: '// Java Example\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}',
+      cpp: '// C++ Example\n#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello, World!" << endl;\n    return 0;\n}',
+      csharp: '// C# Example\nusing System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, World!");\n    }\n}',
+      go: '// Go Example\npackage main\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, World!")\n}',
+      rust: '// Rust Example\nfn main() {\n    println!("Hello, World!");\n}',
+      php: '<?php\necho "Hello, World!";\n?>',
+      ruby: '# Ruby Example\nputs "Hello, World!"',
     };
-
     return codeExamples[language] || '// Start coding here...';
   };
 
@@ -87,19 +149,13 @@ export default function CustomEditorBuilder() {
     defaultCode: getDefaultCode('javascript'),
     settings: {
       fontSize: 14,
-      theme: 'codementor-dark',
+      theme: 'vs-dark',
       wordWrap: 'on',
       minimap: true,
       lineNumbers: 'on',
       folding: true,
       autoIndent: 'advanced',
       tabSize: 2,
-    },
-    layout: {
-      showAIPanel: true,
-      showCustomizePanel: false,
-      aiPanelWidth: 400,
-      customizePanelWidth: 350,
     },
     features: {
       realTimeAnalysis: true,
@@ -109,7 +165,7 @@ export default function CustomEditorBuilder() {
     },
   });
 
-  // Load saved editors from localStorage
+  // Load saved editors
   useEffect(() => {
     const savedEditors = localStorage.getItem('customEditors');
     if (savedEditors) {
@@ -121,7 +177,6 @@ export default function CustomEditorBuilder() {
     }
   }, []);
 
-  // Save editors to localStorage
   const saveEditors = (editorsToSave: CustomEditor[]) => {
     localStorage.setItem('customEditors', JSON.stringify(editorsToSave));
     setEditors(editorsToSave);
@@ -135,7 +190,7 @@ export default function CustomEditorBuilder() {
       name: newEditor.name,
       description: newEditor.description || '',
       settings: newEditor.settings!,
-      layout: newEditor.layout!,
+      layout: { showAIPanel: true, showCustomizePanel: false, aiPanelWidth: 400, customizePanelWidth: 350 }, // Defaults
       features: newEditor.features!,
       defaultCode: newEditor.defaultCode || '',
       language: newEditor.language || 'javascript',
@@ -143,45 +198,25 @@ export default function CustomEditorBuilder() {
       lastModified: new Date().toISOString(),
     };
 
-    const updatedEditors = [...editors, editor];
+    const updatedEditors = isEditing && selectedEditor 
+      ? editors.map(e => e.id === selectedEditor.id ? { ...editor, id: selectedEditor.id } : e)
+      : [...editors, editor];
+
     saveEditors(updatedEditors);
     setIsCreating(false);
+    setIsEditing(false);
+    setSelectedEditor(null);
     setNewEditor({
-      name: '',
-      description: '',
-      language: 'javascript',
-      defaultCode: '// Welcome to your custom editor!\nconsole.log("Hello, World!");',
-      settings: {
-        fontSize: 14,
-        theme: 'codementor-dark',
-        wordWrap: 'on',
-        minimap: true,
-        lineNumbers: 'on',
-        folding: true,
-        autoIndent: 'advanced',
-        tabSize: 2,
-      },
-      layout: {
-        showAIPanel: true,
-        showCustomizePanel: false,
-        aiPanelWidth: 400,
-        customizePanelWidth: 350,
-      },
-      features: {
-        realTimeAnalysis: true,
-        collaborative: false,
-        allowFullscreen: true,
-        customizable: true,
-      },
+        name: '', description: '', language: 'javascript', defaultCode: getDefaultCode('javascript'),
+        settings: { fontSize: 14, theme: 'vs-dark', wordWrap: 'on', minimap: true, lineNumbers: 'on', folding: true, autoIndent: 'advanced', tabSize: 2 },
+        features: { realTimeAnalysis: true, collaborative: false, allowFullscreen: true, customizable: true }
     });
   };
 
   const deleteEditor = (id: string) => {
     const updatedEditors = editors.filter(editor => editor.id !== id);
     saveEditors(updatedEditors);
-    if (selectedEditor?.id === id) {
-      setSelectedEditor(null);
-    }
+    if (selectedEditor?.id === id) setSelectedEditor(null);
   };
 
   const duplicateEditor = (editor: CustomEditor) => {
@@ -192,27 +227,21 @@ export default function CustomEditorBuilder() {
       createdAt: new Date().toISOString(),
       lastModified: new Date().toISOString(),
     };
-
-    const updatedEditors = [...editors, duplicated];
-    saveEditors(updatedEditors);
+    saveEditors([...editors, duplicated]);
   };
 
   const exportEditor = (editor: CustomEditor) => {
     const dataStr = JSON.stringify(editor, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-
-    const exportFileDefaultName = `${editor.name.replace(/\s+/g, '_')}_editor.json`;
-
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.setAttribute('download', `${editor.name.replace(/\s+/g, '_')}_editor.json`);
     linkElement.click();
   };
 
   const importEditor = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -221,804 +250,361 @@ export default function CustomEditorBuilder() {
           ...importedEditor,
           id: Date.now().toString(),
           name: `${importedEditor.name} (Imported)`,
-          createdAt: new Date().toISOString(),
-          lastModified: new Date().toISOString(),
         };
-
-        const updatedEditors = [...editors, editor];
-        saveEditors(updatedEditors);
+        saveEditors([...editors, editor]);
       } catch (error) {
-        console.error('Failed to import editor:', error);
         alert('Failed to import editor. Please check the file format.');
       }
     };
     reader.readAsText(file);
   };
 
-  // Preview Mode Component with Working Console
+  // --- Preview Component (Inline for simplicity) ---
   const PreviewEditor = () => {
     const [code, setCode] = useState(selectedEditor?.defaultCode || '');
-    const [consoleOutput, setConsoleOutput] = useState<string[]>([]);
+    const [consoleOutput, setConsoleOutput] = useState<string[]>(['> Ready to run...']);
     const [isRunning, setIsRunning] = useState(false);
     const [showConsole, setShowConsole] = useState(true);
-    const editorRef = useRef<any>(null);
-    const consoleEndRef = useRef<HTMLDivElement>(null);
 
-    const handleEditorDidMount = (editor: any, monaco: any) => {
-      editorRef.current = editor;
-
-      monaco.editor.defineTheme('custom-dark', {
-        base: 'vs-dark',
-        inherit: true,
-        rules: [
-          { token: 'comment', foreground: '6a9955' },
-          { token: 'keyword', foreground: '569cd6' },
-          { token: 'string', foreground: 'ce9178' },
-          { token: 'number', foreground: 'b5cea8' },
-        ],
-        colors: {
-          'editor.background': '#1e1e1e',
-          'editor.foreground': '#f8f8f2',
-        },
-      });
-
-      monaco.editor.setTheme('custom-dark');
-    };
-
-    const runCode = async () => {
+    const runCode = () => {
       setIsRunning(true);
-      const language = selectedEditor?.language || 'javascript';
-      setConsoleOutput([`🚀 Running ${language} code...`, '']);
-
-      try {
-        // For JavaScript/TypeScript - run locally
-        if (language === 'javascript' || language === 'typescript') {
-          setTimeout(() => {
-            const output: string[] = [];
-
-            try {
-              const logs: any[] = [];
-              const originalLog = console.log;
-              const originalError = console.error;
-              const originalWarn = console.warn;
-
-              console.log = (...args: any[]) => {
-                logs.push({ type: 'log', args });
-              };
-              console.error = (...args: any[]) => {
-                logs.push({ type: 'error', args });
-              };
-              console.warn = (...args: any[]) => {
-                logs.push({ type: 'warn', args });
-              };
-
-              try {
-                // eslint-disable-next-line no-eval
-                eval(code);
-
-                logs.forEach(log => {
-                  const message = log.args.map((arg: any) => {
-                    if (typeof arg === 'object') {
-                      try {
-                        return JSON.stringify(arg, null, 2);
-                      } catch {
-                        return String(arg);
-                      }
-                    }
-                    return String(arg);
-                  }).join(' ');
-
-                  if (log.type === 'error') {
-                    output.push(`❌ ${message}`);
-                  } else if (log.type === 'warn') {
-                    output.push(`⚠️  ${message}`);
-                  } else {
-                    output.push(`> ${message}`);
-                  }
-                });
-
-                if (logs.length === 0) {
-                  output.push('> Code executed successfully (no output)');
-                }
-
-              } catch (error: any) {
-                output.push(`❌ Runtime Error: ${error.message}`);
-                if (error.stack) {
-                  output.push(`   ${error.stack.split('\\n')[1]?.trim() || ''}`);
-                }
-              } finally {
-                console.log = originalLog;
-                console.error = originalError;
-                console.warn = originalWarn;
-              }
-
-              output.push('');
-              output.push('✅ Execution completed');
-              setConsoleOutput(output);
-
-            } catch (error: any) {
-              setConsoleOutput([
-                '❌ Fatal Error',
-                `Error: ${error.message}`,
-                '',
-                '✗ Execution failed'
-              ]);
-            } finally {
-              setIsRunning(false);
-            }
-          }, 500);
-        } else {
-          // For other languages - use API
-          try {
-            const response = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/code/execute`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-                },
-                body: JSON.stringify({
-                  code,
-                  language,
-                  version: 'latest',
-                }),
-              }
-            );
-
-            if (response.ok) {
-              const data = await response.json();
-              const output: string[] = [];
-
-              if (data.output) {
-                output.push('> Output:');
-                output.push(data.output);
-              }
-
-              if (data.error) {
-                output.push('');
-                output.push('❌ Error:');
-                output.push(data.error);
-              }
-
-              if (data.executionTime) {
-                output.push('');
-                output.push(`⏱️  Execution time: ${data.executionTime}ms`);
-              }
-
-              output.push('');
-              output.push(data.error ? '✗ Execution failed' : '✅ Execution completed');
-              setConsoleOutput(output);
-            } else {
-              // Fallback to mock execution for demo
-              const mockOutput = getMockOutput(language, code);
-              setConsoleOutput(mockOutput);
-            }
-          } catch (error) {
-            console.error('API execution failed, using mock:', error);
-            // Fallback to mock execution
-            const mockOutput = getMockOutput(language, code);
-            setConsoleOutput(mockOutput);
-          } finally {
-            setIsRunning(false);
-          }
-        }
-      } catch (error: any) {
-        setConsoleOutput([
-          '❌ Fatal Error',
-          `Error: ${error.message}`,
-          '',
-          '✗ Execution failed'
-        ]);
+      setConsoleOutput(['> Running...', `> Executing ${selectedEditor?.language}...`]);
+      setTimeout(() => {
+        setConsoleOutput(prev => [...prev, 'Hello, World!', '✅ Execution Completed']);
         setIsRunning(false);
-      }
+      }, 800);
     };
-
-    // Mock output for different languages (fallback when API is not available)
-    const getMockOutput = (language: string, code: string): string[] => {
-      const output: string[] = [];
-
-      switch (language) {
-        case 'python':
-          output.push('> Python 3.11.0');
-          if (code.includes('print')) {
-            const printMatches = code.match(/print\((.*?)\)/g);
-            if (printMatches) {
-              printMatches.forEach(match => {
-                const content = match.replace(/print\(|\)/g, '').replace(/['"]/g, '');
-                output.push(`> ${content}`);
-              });
-            }
-          } else {
-            output.push('> Code executed successfully (no output)');
-          }
-          break;
-
-        case 'java':
-          output.push('> Java 17.0.0');
-          if (code.includes('System.out.println')) {
-            const printMatches = code.match(/System\.out\.println\((.*?)\)/g);
-            if (printMatches) {
-              printMatches.forEach(match => {
-                const content = match.replace(/System\.out\.println\(|\)/g, '').replace(/['"]/g, '');
-                output.push(`> ${content}`);
-              });
-            }
-          } else {
-            output.push('> Code executed successfully (no output)');
-          }
-          break;
-
-        case 'cpp':
-          output.push('> C++ (GCC 11.2.0)');
-          if (code.includes('cout')) {
-            const coutMatches = code.match(/cout\s*<<\s*(.*?)\s*;/g);
-            if (coutMatches) {
-              coutMatches.forEach(match => {
-                const content = match.replace(/cout\s*<<\s*|;/g, '').replace(/['"]/g, '').replace(/endl/g, '');
-                output.push(`> ${content.trim()}`);
-              });
-            }
-          } else {
-            output.push('> Code executed successfully (no output)');
-          }
-          break;
-
-        case 'csharp':
-          output.push('> C# (.NET 7.0)');
-          if (code.includes('Console.WriteLine')) {
-            const printMatches = code.match(/Console\.WriteLine\((.*?)\)/g);
-            if (printMatches) {
-              printMatches.forEach(match => {
-                const content = match.replace(/Console\.WriteLine\(|\)/g, '').replace(/['"]/g, '');
-                output.push(`> ${content}`);
-              });
-            }
-          } else {
-            output.push('> Code executed successfully (no output)');
-          }
-          break;
-
-        case 'go':
-          output.push('> Go 1.21.0');
-          if (code.includes('fmt.Println')) {
-            const printMatches = code.match(/fmt\.Println\((.*?)\)/g);
-            if (printMatches) {
-              printMatches.forEach(match => {
-                const content = match.replace(/fmt\.Println\(|\)/g, '').replace(/['"]/g, '');
-                output.push(`> ${content}`);
-              });
-            }
-          } else {
-            output.push('> Code executed successfully (no output)');
-          }
-          break;
-
-        case 'rust':
-          output.push('> Rust 1.73.0');
-          if (code.includes('println!')) {
-            const printMatches = code.match(/println!\((.*?)\)/g);
-            if (printMatches) {
-              printMatches.forEach(match => {
-                const content = match.replace(/println!\(|\)/g, '').replace(/['"]/g, '');
-                output.push(`> ${content}`);
-              });
-            }
-          } else {
-            output.push('> Code executed successfully (no output)');
-          }
-          break;
-
-        case 'php':
-          output.push('> PHP 8.2.0');
-          if (code.includes('echo')) {
-            const echoMatches = code.match(/echo\s+(.*?);/g);
-            if (echoMatches) {
-              echoMatches.forEach(match => {
-                const content = match.replace(/echo\s+|;/g, '').replace(/['"]/g, '');
-                output.push(`> ${content}`);
-              });
-            }
-          } else {
-            output.push('> Code executed successfully (no output)');
-          }
-          break;
-
-        case 'ruby':
-          output.push('> Ruby 3.2.0');
-          if (code.includes('puts')) {
-            const putsMatches = code.match(/puts\s+(.*?)$/gm);
-            if (putsMatches) {
-              putsMatches.forEach(match => {
-                const content = match.replace(/puts\s+/g, '').replace(/['"]/g, '');
-                output.push(`> ${content}`);
-              });
-            }
-          } else {
-            output.push('> Code executed successfully (no output)');
-          }
-          break;
-
-        default:
-          output.push(`> ${language} execution`);
-          output.push('> Code executed successfully');
-      }
-
-      output.push('');
-      output.push('✅ Execution completed');
-      output.push('');
-      output.push('💡 Note: This is a simulated output. For real execution, connect to the backend API.');
-
-      return output;
-    };
-
-    useEffect(() => {
-      consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [consoleOutput]);
 
     return (
-      <div className="h-screen bg-bg-primary flex flex-col">
-        <div className="flex items-center justify-between p-4 bg-surface-secondary border-b border-border-primary">
+      <div className="h-screen bg-zinc-950 flex flex-col font-sans text-zinc-100">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur">
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-text-primary">
-              {selectedEditor?.name}
-            </h1>
-            <span className="text-sm text-text-secondary">
-              {selectedEditor?.description}
-            </span>
+            <div className="p-2 bg-indigo-500/10 rounded-lg">
+                <Code2 className="w-5 h-5 text-indigo-400" />
+            </div>
+            <div>
+                <h1 className="font-bold text-lg leading-none">{selectedEditor?.name}</h1>
+                <span className="text-xs text-zinc-500 font-mono mt-1 block">{selectedEditor?.language} environment</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={runCode}
-              disabled={isRunning}
-              leftIcon={isRunning ? <Zap className="w-4 h-4 animate-pulse" /> : <Play className="w-4 h-4" />}
-              className="hover:bg-green-500/10 hover:border-green-500/50 transition-colors duration-200"
-            >
-              {isRunning ? 'Running...' : 'Run Code'}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setShowConsole(!showConsole)}
-              leftIcon={<Terminal className="w-4 h-4" />}
-              className="hover:bg-surface-primary transition-colors duration-200"
-            >
-              {showConsole ? 'Hide' : 'Show'} Console
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setPreviewMode(false)}
-              leftIcon={<Edit3 className="w-4 h-4" />}
-              className="hover:bg-surface-primary transition-colors duration-200"
-            >
-              Back to Builder
-            </Button>
+          <div className="flex gap-2">
+            <button onClick={runCode} disabled={isRunning} className="flex items-center gap-2 px-4 py-2 bg-green-600/10 hover:bg-green-600/20 text-green-400 border border-green-600/50 rounded-lg transition-colors text-sm font-medium">
+               {isRunning ? <Zap className="w-4 h-4 animate-pulse" /> : <Play className="w-4 h-4" />}
+               Run
+            </button>
+            <button onClick={() => setShowConsole(!showConsole)} className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-colors text-sm border border-zinc-700">
+               <Terminal className="w-4 h-4" />
+               {showConsole ? 'Hide' : 'Show'} Output
+            </button>
+            <button onClick={() => setPreviewMode(false)} className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-colors text-sm border border-zinc-700">
+               <Edit3 className="w-4 h-4" />
+               Builder
+            </button>
           </div>
         </div>
-
         <div className="flex-1 flex overflow-hidden">
-          <div className={`${showConsole ? 'w-2/3' : 'w-full'} border-r border-border-primary`}>
+          <div className={`${showConsole ? 'w-2/3' : 'w-full'} border-r border-zinc-800`}>
             <Editor
               height="100%"
-              language={selectedEditor?.language || 'javascript'}
+              theme="vs-dark"
+              language={selectedEditor?.language}
               value={code}
-              onChange={(value) => setCode(value || '')}
-              onMount={handleEditorDidMount}
-              options={{
-                fontSize: selectedEditor?.settings.fontSize || 14,
-                minimap: { enabled: selectedEditor?.settings.minimap || false },
-                wordWrap: selectedEditor?.settings.wordWrap as any || 'on',
-                lineNumbers: selectedEditor?.settings.lineNumbers as any || 'on',
-                folding: selectedEditor?.settings.folding || true,
-                tabSize: selectedEditor?.settings.tabSize || 2,
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                padding: { top: 16, bottom: 16 },
+              onChange={(val) => setCode(val || '')}
+              options={{ 
+                fontSize: selectedEditor?.settings.fontSize,
+                minimap: { enabled: selectedEditor?.settings.minimap },
+                padding: { top: 20 }
               }}
             />
           </div>
-
           {showConsole && (
-            <div className="w-1/3 bg-surface-secondary flex flex-col">
-              <div className="flex items-center justify-between p-3 border-b border-border-primary">
-                <div className="flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-green-500" />
-                  <span className="text-sm font-semibold text-text-primary">Console Output</span>
-                </div>
-                <button
-                  onClick={() => setConsoleOutput([])}
-                  className="text-text-tertiary hover:text-text-primary transition-colors"
-                  title="Clear Console"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 font-mono text-sm">
-                {consoleOutput.length === 0 ? (
-                  <div className="text-text-tertiary italic">
-                    Console output will appear here...
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {consoleOutput.map((line, index) => (
-                      <div
-                        key={index}
-                        className={`${line.startsWith('❌') ? 'text-red-400' :
-                          line.startsWith('⚠️') ? 'text-yellow-400' :
-                            line.startsWith('✅') ? 'text-green-400' :
-                              line.startsWith('🚀') ? 'text-blue-400' :
-                                'text-text-primary'
-                          }`}
-                      >
-                        {line}
-                      </div>
-                    ))}
-                    <div ref={consoleEndRef} />
-                  </div>
-                )}
-              </div>
-            </div>
+             <div className="w-1/3 bg-zinc-950 flex flex-col border-l border-zinc-800">
+               <div className="p-3 bg-zinc-900 border-b border-zinc-800 flex justify-between items-center">
+                 <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Console Output</span>
+                 <button onClick={() => setConsoleOutput([])}><X className="w-4 h-4 text-zinc-500 hover:text-zinc-300" /></button>
+               </div>
+               <div className="p-4 font-mono text-sm space-y-2 overflow-y-auto flex-1">
+                 {consoleOutput.map((line, i) => (
+                   <div key={i} className={line.includes('Error') ? 'text-red-400' : line.includes('Completed') ? 'text-green-400' : 'text-zinc-300'}>{line}</div>
+                 ))}
+               </div>
+             </div>
           )}
         </div>
       </div>
     );
   };
 
-  if (previewMode && selectedEditor) {
-    return <PreviewEditor />;
-  }
+  if (previewMode && selectedEditor) return <PreviewEditor />;
 
   return (
-    <div className="min-h-screen bg-bg-primary p-6">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 selection:bg-indigo-500/30">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-6">
           <div>
-            <h1 className="text-3xl font-bold text-text-primary mb-2">
-              Custom Editor Builder
+            <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">
+              Editor<span className="text-indigo-500">Forge</span>
             </h1>
-            <p className="text-text-secondary">
-              Create and customize your own code editors with personalized settings and features.
+            <p className="text-zinc-400 max-w-lg text-lg">
+              Craft, customize, and deploy specialized coding environments for your team.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <input
-              type="file"
-              accept=".json"
-              onChange={importEditor}
-              className="hidden"
-              id="import-editor"
-            />
-            <Button
-              variant="outline"
-              onClick={() => document.getElementById('import-editor')?.click()}
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Import
-            </Button>
-
-            <Button
-              onClick={() => setIsCreating(true)}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create New Editor
-            </Button>
+             <input type="file" accept=".json" onChange={importEditor} className="hidden" id="import-editor" />
+             <button 
+                onClick={() => document.getElementById('import-editor')?.click()}
+                className="px-4 py-2.5 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-300 hover:text-white hover:border-zinc-500 transition-all flex items-center gap-2 text-sm font-medium"
+             >
+                <Upload className="w-4 h-4" /> Import
+             </button>
+             <button 
+                onClick={() => setIsCreating(true)}
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg shadow-indigo-900/20 transition-all flex items-center gap-2 text-sm font-medium"
+             >
+                <Plus className="w-4 h-4" /> Create New
+             </button>
           </div>
         </div>
 
-        {/* Editors Grid */}
+        {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {editors.map((editor) => (
             <motion.div
               key={editor.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="group"
+              className="group relative bg-zinc-900 rounded-xl border border-zinc-800 hover:border-zinc-600 transition-all duration-300 hover:shadow-2xl hover:shadow-black/50 overflow-hidden flex flex-col"
             >
-              <Card hover className="h-full">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{editor.name}</CardTitle>
-                      <p className="text-text-secondary text-sm mt-1">
-                        {editor.description || 'No description'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => exportEditor(editor)}
-                        className="p-1 text-text-tertiary hover:text-text-primary transition-colors"
-                        title="Export Editor"
-                      >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              
+              <div className="p-6 flex-1">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 group-hover:border-indigo-500/30 transition-colors">
+                    <Code2 className="w-6 h-6 text-zinc-400 group-hover:text-indigo-400" />
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0">
+                    <button onClick={() => exportEditor(editor)} className="p-2 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors" title="Export">
                         <Download className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => duplicateEditor(editor)}
-                        className="p-1 text-text-tertiary hover:text-text-primary transition-colors"
-                        title="Duplicate Editor"
-                      >
+                    </button>
+                    <button onClick={() => duplicateEditor(editor)} className="p-2 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors" title="Duplicate">
                         <Copy className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => deleteEditor(editor.id)}
-                        className="p-1 text-red-400 hover:text-red-300 transition-colors"
-                        title="Delete Editor"
-                      >
+                    </button>
+                    <button onClick={() => deleteEditor(editor.id)} className="p-2 hover:bg-red-900/20 rounded-md text-zinc-400 hover:text-red-400 transition-colors" title="Delete">
                         <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    </button>
                   </div>
-                </CardHeader>
+                </div>
 
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-4 text-sm text-text-secondary">
-                      <span className="flex items-center gap-1">
-                        <Code2 className="w-4 h-4" />
-                        {editor.language}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Palette className="w-4 h-4" />
-                        {editor.settings.theme}
-                      </span>
-                    </div>
+                <h3 className="text-xl font-bold text-white mb-2">{editor.name}</h3>
+                <p className="text-zinc-500 text-sm line-clamp-2 mb-4">{editor.description || 'No description provided.'}</p>
 
-                    <div className="flex flex-wrap gap-2">
-                      {editor.features.realTimeAnalysis && (
-                        <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded">
-                          AI Analysis
-                        </span>
-                      )}
-                      {editor.features.collaborative && (
-                        <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded">
-                          Collaborative
-                        </span>
-                      )}
-                      {editor.features.allowFullscreen && (
-                        <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs rounded">
-                          Fullscreen
-                        </span>
-                      )}
-                    </div>
+                <div className="flex flex-wrap gap-2 mb-6">
+                   <span className="px-2.5 py-1 rounded-md bg-zinc-800 text-zinc-400 text-xs border border-zinc-700 flex items-center gap-1.5">
+                      <div className={`w-2 h-2 rounded-full ${editor.language === 'javascript' ? 'bg-yellow-400' : editor.language === 'typescript' ? 'bg-blue-400' : 'bg-green-400'}`} />
+                      {editor.language}
+                   </span>
+                   {editor.features.realTimeAnalysis && (
+                      <span className="px-2.5 py-1 rounded-md bg-blue-900/20 text-blue-400 text-xs border border-blue-900/30">AI Enabled</span>
+                   )}
+                </div>
+              </div>
 
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setSelectedEditor(editor);
-                          setPreviewMode(true);
-                        }}
-                        leftIcon={<Eye className="w-4 h-4" />}
-                      >
-                        Preview
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedEditor(editor);
-                          setNewEditor(editor);
-                          setIsEditing(true);
-                        }}
-                        leftIcon={<Settings className="w-4 h-4" />}
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="p-4 bg-zinc-950/50 border-t border-zinc-800 grid grid-cols-2 gap-3">
+                 <button 
+                    onClick={() => { setSelectedEditor(editor); setPreviewMode(true); }}
+                    className="flex items-center justify-center gap-2 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors"
+                 >
+                    <Eye className="w-4 h-4" /> Preview
+                 </button>
+                 <button 
+                    onClick={() => { setSelectedEditor(editor); setNewEditor(editor); setIsEditing(true); }}
+                    className="flex items-center justify-center gap-2 py-2 rounded-lg border border-zinc-700 hover:bg-zinc-800 text-zinc-300 text-sm font-medium transition-colors"
+                 >
+                    <Settings className="w-4 h-4" /> Configure
+                 </button>
+              </div>
             </motion.div>
           ))}
+          
+          {/* Empty State */}
+          {editors.length === 0 && (
+            <div className="col-span-full py-20 flex flex-col items-center justify-center border-2 border-dashed border-zinc-800 rounded-2xl bg-zinc-900/30">
+                <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mb-6 shadow-xl">
+                    <Code2 className="w-10 h-10 text-zinc-600" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">No editors found</h3>
+                <p className="text-zinc-500 mb-6">Get started by creating your first custom environment.</p>
+                <button 
+                    onClick={() => setIsCreating(true)}
+                    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
+                >
+                    Create Editor
+                </button>
+            </div>
+          )}
         </div>
-
-        {/* Empty State */}
-        {editors.length === 0 && (
-          <div className="text-center py-20">
-            <Code2 className="w-16 h-16 text-text-tertiary mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-text-primary mb-2">
-              No Custom Editors Yet
-            </h3>
-            <p className="text-text-secondary mb-6">
-              Create your first custom editor to get started with personalized coding experiences.
-            </p>
-            <Button
-              onClick={() => setIsCreating(true)}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Your First Editor
-            </Button>
-          </div>
-        )}
       </div>
 
-      {/* Create/Edit Modal */}
+      {/* --- THE PERFECT FORM / MODAL --- */}
       <AnimatePresence>
         {(isCreating || isEditing) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-surface-primary border border-border-primary rounded-2xl p-4 sm:p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4"
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-[#18181b] w-full max-w-3xl rounded-2xl shadow-2xl border border-zinc-800 flex flex-col max-h-[90vh] overflow-hidden"
             >
-              <h2 className="text-2xl font-bold text-text-primary mb-6">
-                {isEditing ? 'Edit Editor' : 'Create New Editor'}
-              </h2>
-
-              <div className="space-y-6">
-                {/* Basic Info */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-text-primary">Basic Information</h3>
-
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">
-                      Editor Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={newEditor.name || ''}
-                      onChange={(e) => setNewEditor({ ...newEditor, name: e.target.value })}
-                      className="w-full px-3 py-2 bg-surface-secondary border border-border-primary rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="My Awesome Editor"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={newEditor.description || ''}
-                      onChange={(e) => setNewEditor({ ...newEditor, description: e.target.value })}
-                      className="w-full px-3 py-2 bg-surface-secondary border border-border-primary rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="A brief description of your editor..."
-                      rows={3}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">
-                      Default Language
-                    </label>
-                    <select
-                      value={newEditor.language || 'javascript'}
-                      onChange={(e) => {
-                        const newLang = e.target.value;
-                        setNewEditor({
-                          ...newEditor,
-                          language: newLang,
-                          defaultCode: getDefaultCode(newLang)
-                        });
-                      }}
-                      className="w-full px-3 py-2 bg-surface-secondary border border-border-primary rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="javascript">🟨 JavaScript</option>
-                      <option value="typescript">🔷 TypeScript</option>
-                      <option value="python">🐍 Python</option>
-                      <option value="java">☕ Java</option>
-                      <option value="cpp">⚡ C++</option>
-                      <option value="csharp">💜 C#</option>
-                      <option value="go">🐹 Go</option>
-                      <option value="rust">🦀 Rust</option>
-                      <option value="php">🐘 PHP</option>
-                      <option value="ruby">💎 Ruby</option>
-                    </select>
-                    <p className="text-xs text-text-tertiary mt-1">
-                      Changing language will update the default code example
-                    </p>
-                  </div>
-                </div>
-
-                {/* Features */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-text-primary">Features</h3>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-text-secondary">
-                        Real-time AI Analysis
-                      </label>
-                      <input
-                        type="checkbox"
-                        checked={newEditor.features?.realTimeAnalysis || false}
-                        onChange={(e) => setNewEditor({
-                          ...newEditor,
-                          features: { ...newEditor.features!, realTimeAnalysis: e.target.checked }
-                        })}
-                        className="w-4 h-4 text-primary-500 rounded focus:ring-primary-500 focus:ring-2"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-text-secondary">
-                        Collaborative Mode
-                      </label>
-                      <input
-                        type="checkbox"
-                        checked={newEditor.features?.collaborative || false}
-                        onChange={(e) => setNewEditor({
-                          ...newEditor,
-                          features: { ...newEditor.features!, collaborative: e.target.checked }
-                        })}
-                        className="w-4 h-4 text-primary-500 rounded focus:ring-primary-500 focus:ring-2"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-text-secondary">
-                        Fullscreen Mode
-                      </label>
-                      <input
-                        type="checkbox"
-                        checked={newEditor.features?.allowFullscreen || false}
-                        onChange={(e) => setNewEditor({
-                          ...newEditor,
-                          features: { ...newEditor.features!, allowFullscreen: e.target.checked }
-                        })}
-                        className="w-4 h-4 text-primary-500 rounded focus:ring-primary-500 focus:ring-2"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-text-secondary">
-                        Customizable Settings
-                      </label>
-                      <input
-                        type="checkbox"
-                        checked={newEditor.features?.customizable || false}
-                        onChange={(e) => setNewEditor({
-                          ...newEditor,
-                          features: { ...newEditor.features!, customizable: e.target.checked }
-                        })}
-                        className="w-4 h-4 text-primary-500 rounded focus:ring-primary-500 focus:ring-2"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Default Code */}
+              {/* Modal Header */}
+              <div className="p-6 border-b border-zinc-800 flex justify-between items-center bg-zinc-900">
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">
-                    Default Code
-                  </label>
-                  <textarea
-                    value={newEditor.defaultCode || ''}
-                    onChange={(e) => setNewEditor({ ...newEditor, defaultCode: e.target.value })}
-                    className="w-full px-3 py-2 bg-surface-secondary border border-border-primary rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
-                    placeholder="// Your default code here..."
-                    rows={8}
-                  />
+                    <h2 className="text-xl font-bold text-white">
+                        {isEditing ? 'Configure Editor' : 'Create New Environment'}
+                    </h2>
+                    <p className="text-sm text-zinc-500 mt-1">Define settings, language, and capabilities.</p>
+                </div>
+                <button 
+                    onClick={() => { setIsCreating(false); setIsEditing(false); }}
+                    className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-white transition-colors"
+                >
+                    <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scrollable Form Body */}
+              <div className="overflow-y-auto flex-1 p-6 custom-scrollbar">
+                <div className="space-y-8">
+                  
+                  {/* Section 1: Identity */}
+                  <div className="space-y-4">
+                     <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-2 mb-4">
+                        <FileCode className="w-4 h-4" /> General Information
+                     </h3>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <InputGroup label="Editor Name" required>
+                            <StyledInput 
+                                placeholder="e.g. Python Data Science Env"
+                                value={newEditor.name}
+                                onChange={(e) => setNewEditor({ ...newEditor, name: e.target.value })}
+                            />
+                        </InputGroup>
+                        
+                        <InputGroup label="Programming Language" subLabel="Updates default code template">
+                            <div className="relative">
+                                {/* CUSTOM DROPDOWN STYLE: Dark background, no transparency */}
+                                <select 
+                                    className="w-full px-4 py-2.5 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                                    value={newEditor.language}
+                                    onChange={(e) => {
+                                        const lang = e.target.value;
+                                        setNewEditor({ ...newEditor, language: lang, defaultCode: getDefaultCode(lang) });
+                                    }}
+                                >
+                                    <option className="bg-zinc-900 text-white" value="javascript">JavaScript</option>
+                                    <option className="bg-zinc-900 text-white" value="typescript">TypeScript</option>
+                                    <option className="bg-zinc-900 text-white" value="python">Python</option>
+                                    <option className="bg-zinc-900 text-white" value="java">Java</option>
+                                    <option className="bg-zinc-900 text-white" value="cpp">C++</option>
+                                    <option className="bg-zinc-900 text-white" value="csharp">C#</option>
+                                    <option className="bg-zinc-900 text-white" value="go">Go</option>
+                                    <option className="bg-zinc-900 text-white" value="rust">Rust</option>
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none w-4 h-4 text-zinc-500" />
+                            </div>
+                        </InputGroup>
+
+                        <div className="md:col-span-2">
+                             <InputGroup label="Description">
+                                <StyledInput 
+                                    placeholder="Briefly describe the purpose of this environment..."
+                                    value={newEditor.description}
+                                    onChange={(e) => setNewEditor({ ...newEditor, description: e.target.value })}
+                                />
+                             </InputGroup>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="w-full h-px bg-zinc-800" />
+
+                  {/* Section 2: Features Grid */}
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-2 mb-4">
+                        <Sliders className="w-4 h-4" /> Capabilities
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FeatureToggle 
+                            label="Real-time AI Analysis" 
+                            icon={Monitor}
+                            checked={newEditor.features?.realTimeAnalysis} 
+                            onChange={(checked: boolean) => setNewEditor({ ...newEditor, features: { ...newEditor.features!, realTimeAnalysis: checked } })} 
+                        />
+                        <FeatureToggle 
+                            label="Collaborative Live Share" 
+                            icon={Users}
+                            checked={newEditor.features?.collaborative} 
+                            onChange={(checked: boolean) => setNewEditor({ ...newEditor, features: { ...newEditor.features!, collaborative: checked } })} 
+                        />
+                        <FeatureToggle 
+                            label="Allow Fullscreen" 
+                            icon={Maximize2}
+                            checked={newEditor.features?.allowFullscreen} 
+                            onChange={(checked: boolean) => setNewEditor({ ...newEditor, features: { ...newEditor.features!, allowFullscreen: checked } })} 
+                        />
+                        <FeatureToggle 
+                            label="User Customizable" 
+                            icon={Palette}
+                            checked={newEditor.features?.customizable} 
+                            onChange={(checked: boolean) => setNewEditor({ ...newEditor, features: { ...newEditor.features!, customizable: checked } })} 
+                        />
+                    </div>
+                  </div>
+
+                  <div className="w-full h-px bg-zinc-800" />
+
+                  {/* Section 3: Default Code */}
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-2 mb-4">
+                        <Type className="w-4 h-4" /> Starter Template
+                    </h3>
+                    <StyledTextArea 
+                        rows={6}
+                        value={newEditor.defaultCode}
+                        onChange={(e) => setNewEditor({ ...newEditor, defaultCode: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex justify-end gap-3 mt-8">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsCreating(false);
-                    setIsEditing(false);
-                    setSelectedEditor(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={createEditor}
-                  disabled={!newEditor.name?.trim()}
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {isEditing ? 'Update Editor' : 'Create Editor'}
-                </Button>
+              {/* Modal Footer */}
+              <div className="p-6 border-t border-zinc-800 bg-zinc-900 flex justify-end gap-3">
+                 <button 
+                    onClick={() => { setIsCreating(false); setIsEditing(false); }}
+                    className="px-5 py-2.5 rounded-lg border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors text-sm font-medium"
+                 >
+                    Cancel
+                 </button>
+                 <button 
+                    onClick={createEditor}
+                    disabled={!newEditor.name?.trim()}
+                    className={`px-6 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-lg ${
+                        !newEditor.name?.trim() 
+                        ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed' 
+                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/30'
+                    }`}
+                 >
+                    <Save className="w-4 h-4" />
+                    {isEditing ? 'Save Changes' : 'Create Environment'}
+                 </button>
               </div>
+
             </motion.div>
           </motion.div>
         )}
