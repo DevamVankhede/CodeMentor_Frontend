@@ -1,12 +1,11 @@
 "use client";
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Code2,
   Users,
   Settings,
-  Moon,
-  Sun,
   Menu,
   X,
   LogOut,
@@ -15,34 +14,10 @@ import {
   Gamepad2,
   BarChart3,
   ChevronRight,
-  Bell
 } from "lucide-react";
-
-// --- Mocks for Preview (Replace with real contexts in production) ---
-
-const useAuth = () => {
-  // Toggle this to see logged out state
-  const isAuthenticated = true;
-  return {
-    user: { name: "Alex Designer", email: "alex@studio.com", level: 12, xp: 4500, isAdmin: false },
-    isAuthenticated,
-    logout: () => alert("Logged out"),
-  };
-};
-
-const useTheme = () => {
-  const [theme, setTheme] = useState("dark");
-  return {
-    actualTheme: theme,
-    toggleTheme: () => setTheme(prev => prev === "dark" ? "light" : "dark")
-  };
-};
-
-// --- Main Component ---
 
 export default function Navigation() {
   const { user, isAuthenticated, logout } = useAuth();
-  const { actualTheme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -96,24 +71,6 @@ export default function Navigation() {
 
           {/* 3. Right Actions */}
           <div className="flex items-center gap-3">
-
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors"
-            >
-              {actualTheme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-
-            {/* Notifications (Auth Only) */}
-            {isAuthenticated && (
-              <button className="p-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full border-2 border-zinc-950"></span>
-              </button>
-            )}
-
-            <div className="h-6 w-px bg-zinc-800 mx-1 hidden md:block" />
 
             {/* User Menu / Auth Buttons */}
             {isAuthenticated && user ? (
