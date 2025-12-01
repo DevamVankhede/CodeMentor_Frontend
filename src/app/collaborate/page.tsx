@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,7 +45,7 @@ interface CollaborationSession {
   tags: string[];
 }
 
-export default function CollaboratePage() {
+function CollaboratePageInner() {
   const { isAuthenticated } = useAuth();
   const [activeSession, setActiveSession] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -198,7 +198,9 @@ export default function CollaboratePage() {
         joinSession(joinId);
       }
     });
-  }, [isAuthenticated, searchParams]);
+    // We intentionally only depend on the string value, not the object
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, searchParams?.toString()]);
 
   const createSession = async () => {
     try {
@@ -878,5 +880,32 @@ export default function CollaboratePage() {
         </motion.div>
       )}
     </div>
+  );
+}
+
+export default function CollaboratePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-bg-primary">
+          <Navigation />
+          <div className="flex items-center justify-center h-96">
+            <Card>
+              <CardContent className="text-center py-8">
+                <Users className="w-16 h-16 text-primary-500 mx-auto mb-4" />
+                <h2 className="text-xl font-bold text-text-primary mb-2">
+                  Loading collaboration...
+                </h2>
+                <p className="text-text-secondary">
+                  Preparing your collaboration workspace.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      }
+    >
+      <CollaboratePageInner />
+    </Suspense>
   );
 }
