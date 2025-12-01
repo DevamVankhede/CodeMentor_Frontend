@@ -28,6 +28,7 @@ export default function Navigation() {
     { name: "Dashboard", href: "/dashboard", icon: BarChart3, requiresAuth: true },
     { name: "Games", href: "/games", icon: Gamepad2, requiresAuth: true },
     { name: "Collaborate", href: "/collaborate", icon: Users, requiresAuth: true },
+    { name: "Editor Builder", href: "/editor-builder", icon: Settings, requiresAuth: true },
   ];
 
   return (
