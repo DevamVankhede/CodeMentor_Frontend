@@ -76,21 +76,19 @@ const InputField = React.forwardRef(
     return (
       <div ref={ref} className="space-y-1.5">
         <label
-          className={`text-xs font-semibold tracking-wide transition-colors duration-200 ${
-            error
-              ? "text-rose-400"
-              : isFocused
+          className={`text-xs font-semibold tracking-wide transition-colors duration-200 ${error
+            ? "text-rose-400"
+            : isFocused
               ? "text-indigo-400"
               : "text-slate-400"
-          }`}
+            }`}
         >
           {label}
         </label>
         <div className="relative group">
           <div
-            className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-200 ${
-              isFocused ? "text-indigo-400" : "text-slate-500"
-            }`}
+            className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-200 ${isFocused ? "text-indigo-400" : "text-slate-500"
+              }`}
           >
             <Icon size={18} />
           </div>
@@ -101,12 +99,11 @@ const InputField = React.forwardRef(
             onChange={onChange}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            className={`w-full bg-slate-800/50 text-slate-100 pl-10 pr-10 py-3 rounded-xl border transition-all duration-300 outline-none
-            ${
-              error
+            className={`w-full bg-slate-800 text-slate-100 pl-10 pr-10 py-3 rounded-xl border transition-all duration-300 outline-none
+            ${error
                 ? "border-rose-500/50 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10"
                 : "border-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 hover:border-slate-600"
-            }
+              }
             placeholder:text-slate-600 font-medium
           `}
             placeholder={placeholder}
@@ -146,7 +143,7 @@ const SocialButton = ({ icon: Icon, label, onClick, isLoading, disabled }) => (
     type="button"
     onClick={onClick}
     disabled={disabled || isLoading}
-    className="flex-1 flex items-center justify-center gap-2 bg-slate-800/50 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 hover:border-slate-600 py-2.5 rounded-xl transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+    className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 hover:border-slate-600 py-2.5 rounded-xl transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
   >
     {isLoading ? (
       <Loader2 size={18} className="animate-spin text-indigo-400" />
@@ -244,8 +241,7 @@ export default function AuthPortal({
     try {
       await socialLogin(provider);
       setSuccess(
-        `Successfully authenticated with ${
-          provider === "github" ? "GitHub" : "Google"
+        `Successfully authenticated with ${provider === "github" ? "GitHub" : "Google"
         }!`
       );
     } catch (err) {
@@ -469,7 +465,7 @@ export default function AuthPortal({
                   <div className="w-full border-t border-slate-700/50"></div>
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-[#0f172a] bg-opacity-95 px-3 text-slate-500 tracking-wider">
+                  <span className="bg-[#0f172a] px-3 text-slate-500 tracking-wider">
                     Or continue with
                   </span>
                 </div>
@@ -503,7 +499,7 @@ export default function AuthPortal({
           </div>
 
           {/* Footer */}
-          <div className="p-6 bg-slate-900/50 border-t border-slate-700/50 text-center">
+          <div className="p-6 bg-slate-900 border-t border-slate-700/50 text-center">
             <p className="text-sm text-slate-400">
               {isLogin
                 ? "Don't have an account? "

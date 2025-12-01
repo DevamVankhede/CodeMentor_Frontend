@@ -34,8 +34,8 @@
   --gradient-success: linear-gradient(135deg, #10b981 0%, #34d399 100%);
   --gradient-error: linear-gradient(135deg, #ef4444 0%, #f472b6 100%);
 
-  /* Glass Effect */
-  --glass-bg: #0f172a; /* Match solid card background, no transparency */
+  /* Glass Effect - Solid backgrounds */
+  --glass-bg: #0f172a;
   --glass-border: rgba(255, 255, 255, 0.1);
   --glass-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.3);
 
@@ -134,11 +134,9 @@ body {
   background: var(--gradient-button);
 }
 
-/* Glass Morphism Components */
+/* Glass Morphism Components - Solid backgrounds */
 .glass {
   background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
 }

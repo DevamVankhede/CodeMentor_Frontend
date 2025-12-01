@@ -99,7 +99,7 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <div className="inline-flex items-center justify-center mb-6 px-4 py-2 border border-primary-foreground/20 rounded-full backdrop-blur-sm bg-white/5 text-sm font-medium text-primary-foreground animate-fade-in">
+            <div className="inline-flex items-center justify-center mb-6 px-4 py-2 border border-primary-foreground/20 rounded-full bg-card text-sm font-medium text-primary-foreground animate-fade-in">
               <Sparkles className="w-4 h-4 mr-2 text-primary" />
               Code Smarter, Not Harder
             </div>

@@ -19,7 +19,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="relative z-20 border-b border-white/10 bg-gaming-darker/80 backdrop-blur-xl">
+      <header className="relative z-20 border-b border-white/10 bg-slate-900">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
@@ -65,7 +65,7 @@ export default function Header() {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-3 p-2 rounded-xl bg-gradient-to-r from-royal-600/20 to-gaming-secondary/20 border border-white/20 hover:border-neon-blue/50 transition-all"
+                    className="flex items-center gap-3 p-2 rounded-xl bg-slate-800 border border-white/20 hover:border-blue-500 transition-all"
                   >
                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-neon-blue to-neon-purple flex items-center justify-center text-white font-bold">
                       {user.name.charAt(0).toUpperCase()}
@@ -87,7 +87,7 @@ export default function Header() {
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="absolute right-0 top-full mt-2 w-48 bg-gaming-dark/95 backdrop-blur-xl border border-white/20 rounded-xl p-2 shadow-2xl"
+                      className="absolute right-0 top-full mt-2 w-48 bg-slate-800 border border-white/20 rounded-xl p-2 shadow-2xl"
                     >
                       <div className="p-3 border-b border-white/10">
                         <p className="text-white font-semibold">{user.name}</p>

@@ -90,7 +90,7 @@ const InputField = React.forwardRef<HTMLDivElement, InputFieldProps>(({
           onChange={onChange}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          className={`w-full bg-slate-800/50 text-slate-100 pl-9 pr-9 py-2.5 rounded-xl border transition-all duration-300 outline-none text-sm
+          className={`w-full bg-slate-800 text-slate-100 pl-9 pr-9 py-2.5 rounded-xl border transition-all duration-300 outline-none text-sm
             ${error
               ? 'border-rose-500/50 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10'
               : 'border-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 hover:border-slate-600'
@@ -133,7 +133,7 @@ const SocialButton: React.FC<SocialButtonProps> = ({ icon: Icon, label, onClick,
     type="button"
     onClick={onClick}
     disabled={disabled || isLoading}
-    className="flex-1 flex items-center justify-center gap-2 bg-slate-800/50 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 hover:border-slate-600 py-2 rounded-xl transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+    className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 hover:border-slate-600 py-2 rounded-xl transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
   >
     {isLoading ? (
       <Loader2 size={16} className="animate-spin text-indigo-400" />
@@ -474,7 +474,7 @@ export default function AuthPortal({ isOpen = true, onClose = () => console.log(
                   <div className="w-full border-t border-slate-700/50"></div>
                 </div>
                 <div className="relative flex justify-center text-[10px] uppercase">
-                  <span className="bg-[#0f172a] bg-opacity-95 px-2 text-slate-500 tracking-wider">
+                  <span className="bg-[#0f172a] px-2 text-slate-500 tracking-wider">
                     Or continue with
                   </span>
                 </div>
@@ -500,7 +500,7 @@ export default function AuthPortal({ isOpen = true, onClose = () => console.log(
           </div>
 
           {/* Footer */}
-          <div className="p-4 bg-salate-900/50 border-t border-slate-700/50 text-center">
+          <div className="p-4 bg-slate-900 border-t border-slate-700/50 text-center">
             <p className="text-xs text-slate-400">
               {isLogin ? "Don't have an account? " : "Already have an account? "}
               <button
