@@ -26,14 +26,16 @@ export default function Select({
       <select
         className={[
           "w-full px-3 py-2 rounded-lg border",
-          "bg-surface-secondary text-text-primary placeholder-text-tertiary",
+          "bg-slate-800 text-white placeholder-text-tertiary",
           "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500",
           "appearance-none",
+          "[&>option]:bg-slate-800 [&>option]:text-white",
           error ? "border-red-500" : "border-border-primary",
           className,
         ]
           .filter(Boolean)
           .join(" ")}
+        style={{ colorScheme: 'dark' }}
         {...props}
       >
         {children}
