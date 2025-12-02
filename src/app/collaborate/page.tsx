@@ -254,12 +254,11 @@ function CollaboratePageInner() {
       }
 
       // Fallback: Create session locally (this always works)
-      const newSessionId = `session-${Date.now()}-${Math.random()
-        .toString(36)
-        .substring(2, 8)}`;
-      const roomId = `room-${Date.now()}-${Math.random()
-        .toString(36)
-        .substring(2, 8)}`;
+      // Use a simple, shareable room ID
+      const timestamp = Date.now();
+      const randomPart = Math.random().toString(36).substring(2, 8);
+      const roomId = `${timestamp}-${randomPart}`;
+      const newSessionId = `session-${roomId}`;
 
       const localSession: CollaborationSession = {
         id: newSessionId,
@@ -296,11 +295,11 @@ function CollaboratePageInner() {
       setActiveSession(roomId);
       setShowCreateModal(false);
       resetForm();
-      console.log("Session created, active session set to:", roomId);
-
       console.log("Session created locally:", localSession);
+      console.log("Room ID for sharing:", roomId);
+
       alert(
-        "Session created successfully! You can now collaborate with others."
+        `Session created successfully! Share the room link with others to collaborate together.\n\nRoom ID: ${roomId}`
       );
     } catch (error) {
       console.error("Error creating session:", error);
@@ -323,7 +322,7 @@ function CollaboratePageInner() {
       console.log("Attempting to join session:", sessionId);
 
       // First, try to find the session in our local data
-      const session = sessions.find((s) => s.id === sessionId);
+      const session = sessions.find((s) => s.id === sessionId || s.roomId === sessionId);
       if (!session) {
         console.error("Session not found:", sessionId);
         alert("Session not found. It may have been deleted or expired.");
@@ -355,7 +354,8 @@ function CollaboratePageInner() {
           if (response.ok) {
             const data = await response.json();
             console.log("Successfully joined session via API:", data);
-            setActiveSession(sessionId);
+            // Use the roomId from the session, not the sessionId
+            setActiveSession(session.roomId);
             return;
           } else {
             console.log(
@@ -374,12 +374,12 @@ function CollaboratePageInner() {
       }
 
       // Fallback: Join locally (this always works)
-      console.log("Joining session locally:", sessionId);
+      console.log("Joining session locally. Session ID:", sessionId, "Room ID:", session.roomId);
 
       // Update local session participants count
       setSessions((prevSessions) =>
         prevSessions.map((s) =>
-          s.id === sessionId
+          s.id === sessionId || s.roomId === sessionId
             ? {
               ...s,
               participants: Math.min(s.participants + 1, s.maxParticipants),
@@ -393,7 +393,7 @@ function CollaboratePageInner() {
         localStorage.getItem("collaboration-sessions") || "[]"
       ) as CollaborationSession[];
       const updatedStoredSessions = storedSessions.map((s: CollaborationSession) =>
-        s.id === sessionId
+        s.id === sessionId || s.roomId === sessionId
           ? {
             ...s,
             participants: Math.min(s.participants + 1, s.maxParticipants),
@@ -405,9 +405,10 @@ function CollaboratePageInner() {
         JSON.stringify(updatedStoredSessions)
       );
 
-      setActiveSession(sessionId);
+      // CRITICAL: Use roomId, not sessionId for the WebSocket connection
+      setActiveSession(session.roomId);
       console.log("Successfully joined session locally");
-      console.log("Active session set to:", sessionId);
+      console.log("Active session (roomId) set to:", session.roomId);
     } catch (error) {
       console.error("Error joining session:", error);
       alert("Failed to join session. Please try again.");
@@ -449,16 +450,22 @@ function CollaboratePageInner() {
 
   const copySessionLink = async (sessionId: string) => {
     try {
-      const link = `${window.location.origin}/collaborate?join=${sessionId}`;
+      // Find the session to get its roomId
+      const session = sessions.find((s) => s.id === sessionId);
+      const shareId = session?.roomId || sessionId;
+
+      const link = `${window.location.origin}/collaborate?join=${shareId}`;
       await navigator.clipboard.writeText(link);
       console.log("Session link copied to clipboard:", link);
-      alert("Session link copied to clipboard!");
+      alert("Session link copied to clipboard! Share this with your team to join the same room.");
     } catch (error) {
       console.error("Failed to copy link:", error);
       // Fallback: show the link in a prompt
+      const session = sessions.find((s) => s.id === sessionId);
+      const shareId = session?.roomId || sessionId;
       prompt(
         "Copy this session link:",
-        `${window.location.origin}/collaborate/${sessionId}`
+        `${window.location.origin}/collaborate?join=${shareId}`
       );
     }
   };
