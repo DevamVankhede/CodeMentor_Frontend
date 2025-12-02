@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Users, MessageSquare, Share2, ArrowLeft, Crown, Send, Copy, Check } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Editor from "@monaco-editor/react";
@@ -13,7 +13,7 @@ interface ChatMessage {
   id: string;
   user: string;
   message: string;
-  timestamp: Date;
+  timestamp: string;
   type: "message" | "system";
   color?: string;
 }
@@ -24,6 +24,14 @@ interface Participant {
   isOwner: boolean;
   isActive: boolean;
   color: string;
+  lastSeen: number;
+}
+
+interface CollaborationData {
+  code: string;
+  messages: ChatMessage[];
+  participants: Participant[];
+  lastUpdate: number;
 }
 
 const USER_COLORS = [
@@ -35,11 +43,105 @@ const USER_COLORS = [
   "#4DB6AC",
 ];
 
+// Generate unique user ID
+const getUserId = () => {
+  let userId = localStorage.getItem("collab-user-id");
+  if (!userId) {
+    userId = `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    localStorage.setItem("collab-user-id", userId);
+  }
+  return userId;
+};
+
+// Get user name
+const getUserName = () => {
+  let userName = localStorage.getItem("collab-user-name");
+  if (!userName) {
+    userName = `User${Math.floor(Math.random() * 1000)}`;
+    localStorage.setItem("collab-user-name", userName);
+  }
+  return userName;
+};
+
 export default function SimpleCollaborationHub({
   roomId,
   onLeave,
 }: SimpleCollaborationHubProps) {
-  const [code, setCode] = useState(`// Welcome to collaborative coding!
+  const userId = useRef(getUserId());
+  const userName = useRef(getUserName());
+  const userColor = useRef(USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)]);
+  const isUpdating = useRef(false);
+  const lastCodeUpdate = useRef(0);
+
+  const [code, setCode] = useState("");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<any>(null);
+
+  // Initialize or load collaboration data
+  const initializeCollaboration = useCallback(() => {
+    const storageKey = `collab-${roomId}`;
+    const stored = localStorage.getItem(storageKey);
+
+    if (stored) {
+      try {
+        const data: CollaborationData = JSON.parse(stored);
+        setCode(data.code);
+        setChatMessages(data.messages);
+
+        // Add current user to participants
+        const existingParticipant = data.participants.find(p => p.id === userId.current);
+        if (!existingParticipant) {
+          const newParticipant: Participant = {
+            id: userId.current,
+            name: userName.current,
+            isOwner: data.participants.length === 0,
+            isActive: true,
+            color: userColor.current,
+            lastSeen: Date.now(),
+          };
+          data.participants.push(newParticipant);
+
+          // Add system message
+          const joinMessage: ChatMessage = {
+            id: `msg-${Date.now()}`,
+            user: "System",
+            message: `${userName.current} joined the session`,
+            timestamp: new Date().toISOString(),
+            type: "system",
+          };
+          data.messages.push(joinMessage);
+          setChatMessages(data.messages);
+        }
+
+        // Update participants with current user active
+        const updatedParticipants = data.participants.map(p =>
+          p.id === userId.current
+            ? { ...p, isActive: true, lastSeen: Date.now() }
+            : p
+        );
+        setParticipants(updatedParticipants);
+
+        // Save updated data
+        localStorage.setItem(storageKey, JSON.stringify({
+          ...data,
+          participants: updatedParticipants,
+          lastUpdate: Date.now(),
+        }));
+      } catch (error) {
+        console.error("Failed to load collaboration data:", error);
+        initializeNewSession();
+      }
+    } else {
+      initializeNewSession();
+    }
+  }, [roomId]);
+
+  const initializeNewSession = () => {
+    const initialCode = `// Welcome to collaborative coding!
 // Start typing to see real-time collaboration
 
 function hello() {
@@ -51,39 +153,194 @@ const greet = (name) => {
   return \`Hello, \${name}! Welcome to the session.\`;
 };
 
-console.log(greet("Developer"));`);
+console.log(greet("Developer"));`;
 
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: "1",
-      user: "System",
-      message: "Welcome to the collaboration session!",
-      timestamp: new Date(),
-      type: "system",
-    },
-    {
-      id: "2",
-      user: "System",
-      message: "Start coding together! Changes will be synchronized in real-time.",
-      timestamp: new Date(),
-      type: "system",
-    },
-  ]);
+    const initialMessages: ChatMessage[] = [
+      {
+        id: "msg-1",
+        user: "System",
+        message: "Welcome to the collaboration session!",
+        timestamp: new Date().toISOString(),
+        type: "system",
+      },
+      {
+        id: "msg-2",
+        user: "System",
+        message: "Start coding together! Changes will be synchronized in real-time.",
+        timestamp: new Date().toISOString(),
+        type: "system",
+      },
+      {
+        id: "msg-3",
+        user: "System",
+        message: `${userName.current} created the session`,
+        timestamp: new Date().toISOString(),
+        type: "system",
+      },
+    ];
 
-  const [participants, setParticipants] = useState<Participant[]>([
-    {
-      id: "1",
-      name: "You",
+    const initialParticipant: Participant = {
+      id: userId.current,
+      name: userName.current,
       isOwner: true,
       isActive: true,
-      color: USER_COLORS[0],
-    },
-  ]);
+      color: userColor.current,
+      lastSeen: Date.now(),
+    };
 
-  const [newMessage, setNewMessage] = useState("");
-  const [linkCopied, setLinkCopied] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const editorRef = useRef<any>(null);
+    setCode(initialCode);
+    setChatMessages(initialMessages);
+    setParticipants([initialParticipant]);
+
+    const storageKey = `collab-${roomId}`;
+    localStorage.setItem(storageKey, JSON.stringify({
+      code: initialCode,
+      messages: initialMessages,
+      participants: [initialParticipant],
+      lastUpdate: Date.now(),
+    }));
+  };
+
+  // Sync data from localStorage
+  const syncFromStorage = useCallback(() => {
+    if (isUpdating.current) return;
+
+    const storageKey = `collab-${roomId}`;
+    const stored = localStorage.getItem(storageKey);
+
+    if (stored) {
+      try {
+        const data: CollaborationData = JSON.parse(stored);
+
+        // Update code if changed by others
+        if (data.code !== code && Date.now() - lastCodeUpdate.current > 500) {
+          setCode(data.code);
+        }
+
+        // Update messages
+        if (JSON.stringify(data.messages) !== JSON.stringify(chatMessages)) {
+          setChatMessages(data.messages);
+        }
+
+        // Update participants and mark inactive ones
+        const now = Date.now();
+        const updatedParticipants = data.participants.map(p => ({
+          ...p,
+          isActive: p.id === userId.current || (now - p.lastSeen < 10000),
+        }));
+
+        if (JSON.stringify(updatedParticipants) !== JSON.stringify(participants)) {
+          setParticipants(updatedParticipants);
+        }
+      } catch (error) {
+        console.error("Failed to sync collaboration data:", error);
+      }
+    }
+  }, [roomId, code, chatMessages, participants]);
+
+  // Update localStorage
+  const updateStorage = useCallback((updates: Partial<CollaborationData>) => {
+    isUpdating.current = true;
+    const storageKey = `collab-${roomId}`;
+    const stored = localStorage.getItem(storageKey);
+
+    if (stored) {
+      try {
+        const data: CollaborationData = JSON.parse(stored);
+        const updatedData = {
+          ...data,
+          ...updates,
+          lastUpdate: Date.now(),
+        };
+        localStorage.setItem(storageKey, JSON.stringify(updatedData));
+
+        // Trigger storage event for other tabs
+        window.dispatchEvent(new Event('storage'));
+      } catch (error) {
+        console.error("Failed to update collaboration data:", error);
+      }
+    }
+    setTimeout(() => {
+      isUpdating.current = false;
+    }, 100);
+  }, [roomId]);
+
+  // Update participant heartbeat
+  const updateHeartbeat = useCallback(() => {
+    const storageKey = `collab-${roomId}`;
+    const stored = localStorage.getItem(storageKey);
+
+    if (stored) {
+      try {
+        const data: CollaborationData = JSON.parse(stored);
+        const updatedParticipants = data.participants.map(p =>
+          p.id === userId.current
+            ? { ...p, lastSeen: Date.now(), isActive: true }
+            : p
+        );
+        localStorage.setItem(storageKey, JSON.stringify({
+          ...data,
+          participants: updatedParticipants,
+          lastUpdate: Date.now(),
+        }));
+      } catch (error) {
+        console.error("Failed to update heartbeat:", error);
+      }
+    }
+  }, [roomId]);
+
+  // Initialize on mount
+  useEffect(() => {
+    initializeCollaboration();
+
+    // Sync every 500ms
+    const syncInterval = setInterval(syncFromStorage, 500);
+
+    // Update heartbeat every 3 seconds
+    const heartbeatInterval = setInterval(updateHeartbeat, 3000);
+
+    // Listen for storage events from other tabs
+    const handleStorageChange = () => {
+      syncFromStorage();
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // Cleanup on unmount
+    return () => {
+      clearInterval(syncInterval);
+      clearInterval(heartbeatInterval);
+      window.removeEventListener('storage', handleStorageChange);
+
+      // Mark user as inactive
+      const storageKey = `collab-${roomId}`;
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        try {
+          const data: CollaborationData = JSON.parse(stored);
+          const updatedParticipants = data.participants.map(p =>
+            p.id === userId.current ? { ...p, isActive: false } : p
+          );
+
+          const leaveMessage: ChatMessage = {
+            id: `msg-${Date.now()}`,
+            user: "System",
+            message: `${userName.current} left the session`,
+            timestamp: new Date().toISOString(),
+            type: "system",
+          };
+
+          localStorage.setItem(storageKey, JSON.stringify({
+            ...data,
+            participants: updatedParticipants,
+            messages: [...data.messages, leaveMessage],
+            lastUpdate: Date.now(),
+          }));
+        } catch (error) {
+          console.error("Failed to mark user as inactive:", error);
+        }
+      }
+    };
+  }, [initializeCollaboration, syncFromStorage, updateHeartbeat, roomId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -119,9 +376,10 @@ console.log(greet("Developer"));`);
   };
 
   const handleCodeChange = (newCode: string | undefined) => {
-    if (newCode !== undefined) {
+    if (newCode !== undefined && newCode !== code) {
       setCode(newCode);
-      // In a real app, this would send changes via WebSocket/SignalR
+      lastCodeUpdate.current = Date.now();
+      updateStorage({ code: newCode });
     }
   };
 
@@ -129,15 +387,17 @@ console.log(greet("Developer"));`);
     if (!newMessage.trim()) return;
 
     const message: ChatMessage = {
-      id: Date.now().toString(),
-      user: "You",
+      id: `msg-${Date.now()}-${userId.current}`,
+      user: userName.current,
       message: newMessage,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
       type: "message",
-      color: USER_COLORS[0],
+      color: userColor.current,
     };
 
-    setChatMessages((prev) => [...prev, message]);
+    const updatedMessages = [...chatMessages, message];
+    setChatMessages(updatedMessages);
+    updateStorage({ messages: updatedMessages });
     setNewMessage("");
   };
 
@@ -279,8 +539,8 @@ console.log(greet("Developer"));`);
               <div
                 key={message.id}
                 className={`${message.type === "system"
-                    ? "text-center text-xs text-text-tertiary italic"
-                    : ""
+                  ? "text-center text-xs text-text-tertiary italic"
+                  : ""
                   }`}
               >
                 {message.type === "system" ? (
@@ -295,7 +555,7 @@ console.log(greet("Developer"));`);
                         {message.user}
                       </span>
                       <span className="text-xs text-text-tertiary">
-                        {message.timestamp.toLocaleTimeString()}
+                        {new Date(message.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
                     <div className="text-sm text-text-primary bg-surface-primary p-3 rounded-lg">
