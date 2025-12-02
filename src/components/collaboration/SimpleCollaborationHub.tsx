@@ -57,6 +57,7 @@ export default function SimpleCollaborationHub({ roomId, onLeave }: SimpleCollab
 
     ws.onopen = () => {
       console.log("✅ Connected to collaboration server");
+      console.log("🔑 Joining room with ID:", roomId);
       setIsConnected(true);
 
       // Join the room
@@ -69,6 +70,8 @@ export default function SimpleCollaborationHub({ roomId, onLeave }: SimpleCollab
           color: userColor.current,
         },
       }));
+
+      console.log("📤 Sent join request for room:", roomId, "as user:", userName.current);
     };
 
     ws.onmessage = (event) => {
@@ -128,7 +131,7 @@ export default function SimpleCollaborationHub({ roomId, onLeave }: SimpleCollab
         // Remove duplicates by ID
         const uniqueParticipants = Array.from(
           new Map(message.data.participants.map((p: Participant) => [p.id, p])).values()
-        );
+        ) as Participant[];
         setParticipants(uniqueParticipants);
         break;
 
@@ -145,7 +148,7 @@ export default function SimpleCollaborationHub({ roomId, onLeave }: SimpleCollab
         // User left
         const uniqueLeft = Array.from(
           new Map(message.data.participants.map((p: Participant) => [p.id, p])).values()
-        );
+        ) as Participant[];
         setParticipants(uniqueLeft);
         setChatMessages(prev => [...prev, message.data.message]);
         break;

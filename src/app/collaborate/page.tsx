@@ -62,7 +62,7 @@ function CollaboratePageInner() {
   const mockSessions: CollaborationSession[] = [
     {
       id: "1",
-      roomId: "room-1",
+      roomId: "1733155200000-react-workshop",
       name: "React Components Workshop",
       description: "Building reusable React components together",
       language: "javascript",
@@ -80,7 +80,7 @@ function CollaboratePageInner() {
     },
     {
       id: "2",
-      roomId: "room-2",
+      roomId: "1733155300000-algo-study",
       name: "Algorithm Study Group",
       description: "Solving LeetCode problems collaboratively",
       language: "python",
@@ -98,7 +98,7 @@ function CollaboratePageInner() {
     },
     {
       id: "3",
-      roomId: "room-3",
+      roomId: "1733155400000-backend-api",
       name: "Backend API Development",
       description: "Building REST APIs with Node.js",
       language: "javascript",
