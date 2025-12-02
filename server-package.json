@@ -1,0 +1,12 @@
+{
+  "name": "collaboration-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for real-time collaboration",
+  "main": "collaboration-server.js",
+  "scripts": {
+    "start": "node collaboration-server.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  }
+}

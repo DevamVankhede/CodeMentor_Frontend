@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Users, MessageSquare, Share2, ArrowLeft, Crown, Send, Copy, Check } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Users, MessageSquare, ArrowLeft, Crown, Send, Copy, Check } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Editor from "@monaco-editor/react";
 
@@ -27,223 +27,177 @@ interface Participant {
   lastSeen: number;
 }
 
-interface CollaborationData {
-  code: string;
-  messages: ChatMessage[];
-  participants: Participant[];
-  lastUpdate: number;
-}
+const USER_COLORS = ["#E57373", "#81C784", "#64B5F6", "#FFD54F", "#BA68C8", "#4DB6AC"];
 
-const USER_COLORS = [
-  "#E57373",
-  "#81C784",
-  "#64B5F6",
-  "#FFD54F",
-  "#BA68C8",
-  "#4DB6AC",
-];
+// Use environment variable for WebSocket URL
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080";
 
-// Generate unique user ID
-const getUserId = () => {
-  let userId = sessionStorage.getItem("collab-user-id");
-  if (!userId) {
-    userId = `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    sessionStorage.setItem("collab-user-id", userId);
-  }
-  return userId;
-};
-
-// Get user name
-const getUserName = () => {
-  let userName = sessionStorage.getItem("collab-user-name");
-  if (!userName) {
-    userName = `User${Math.floor(Math.random() * 1000)}`;
-    sessionStorage.setItem("collab-user-name", userName);
-  }
-  return userName;
-};
-
-export default function SimpleCollaborationHub({
-  roomId,
-  onLeave,
-}: SimpleCollaborationHubProps) {
-  const userId = useRef(getUserId());
-  const userName = useRef(getUserName());
-  const userColor = useRef(USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)]);
-  const hasJoined = useRef(false);
-  const hasLeft = useRef(false);
-
+export default function SimpleCollaborationHub({ roomId, onLeave }: SimpleCollaborationHubProps) {
   const [code, setCode] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [linkCopied, setLinkCopied] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<any>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const userId = useRef(`user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+  const userName = useRef(`User${Math.floor(Math.random() * 1000)}`);
+  const userColor = useRef(USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)]);
+  const isUpdatingCode = useRef(false);
 
-  const storageKey = `collab-${roomId}`;
+  // Initialize WebSocket connection
+  useEffect(() => {
+    console.log("🔌 Connecting to WebSocket server...");
 
-  // Get collaboration data
-  const getCollabData = useCallback((): CollaborationData | null => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      return stored ? JSON.parse(stored) : null;
-    } catch (error) {
-      console.error("Failed to get collab data:", error);
-      return null;
+    const ws = new WebSocket(WS_URL);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log("✅ Connected to collaboration server");
+      setIsConnected(true);
+
+      // Join the room
+      ws.send(JSON.stringify({
+        type: 'join',
+        roomId,
+        user: {
+          id: userId.current,
+          name: userName.current,
+          color: userColor.current,
+        },
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        handleServerMessage(message);
+      } catch (error) {
+        console.error("Error parsing message:", error);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error("❌ WebSocket connection failed. Make sure the server is running on", WS_URL);
+      setIsConnected(false);
+    };
+
+    ws.onclose = (event) => {
+      console.log("🔴 Disconnected from server. Code:", event.code, "Reason:", event.reason || "Connection closed");
+      setIsConnected(false);
+    };
+
+    // Heartbeat every 5 seconds
+    const heartbeatInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'heartbeat',
+          roomId,
+          userId: userId.current,
+        }));
+      }
+    }, 5000);
+
+    // Cleanup
+    return () => {
+      clearInterval(heartbeatInterval);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'leave',
+          roomId,
+          userId: userId.current,
+          userName: userName.current,
+        }));
+        ws.close();
+      }
+    };
+  }, [roomId]);
+
+  // Handle messages from server
+  const handleServerMessage = (message: any) => {
+    console.log("📨 Received:", message.type);
+
+    switch (message.type) {
+      case 'init':
+        // Initial state when joining
+        setCode(message.data.code);
+        setChatMessages(message.data.messages);
+        // Remove duplicates by ID
+        const uniqueParticipants = Array.from(
+          new Map(message.data.participants.map((p: Participant) => [p.id, p])).values()
+        );
+        setParticipants(uniqueParticipants);
+        break;
+
+      case 'user-joined':
+        // New user joined - prevent duplicates
+        setParticipants(prev => {
+          const filtered = prev.filter(p => p.id !== message.data.participant.id);
+          return [...filtered, message.data.participant];
+        });
+        setChatMessages(prev => [...prev, message.data.message]);
+        break;
+
+      case 'user-left':
+        // User left
+        const uniqueLeft = Array.from(
+          new Map(message.data.participants.map((p: Participant) => [p.id, p])).values()
+        );
+        setParticipants(uniqueLeft);
+        setChatMessages(prev => [...prev, message.data.message]);
+        break;
+
+      case 'code-update':
+        // Code changed by another user
+        if (!isUpdatingCode.current) {
+          setCode(message.data.code);
+        }
+        break;
+
+      case 'chat-update':
+        // New chat message - prevent duplicates
+        setChatMessages(prev => {
+          const exists = prev.some(m => m.id === message.data.message.id);
+          if (exists) return prev;
+          return [...prev, message.data.message];
+        });
+        break;
     }
-  }, [storageKey]);
+  };
 
-  // Save collaboration data
-  const saveCollabData = useCallback((data: CollaborationData) => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(data));
-      // Trigger custom event for cross-tab sync
-      window.dispatchEvent(new CustomEvent('collab-update', { detail: { roomId } }));
-    } catch (error) {
-      console.error("Failed to save collab data:", error);
-    }
-  }, [storageKey, roomId]);
-
-  // Initialize session
-  const initializeSession = useCallback(() => {
-    let data = getCollabData();
-
-    if (!data) {
-      // Create new session
-      const initialCode = `// Welcome to collaborative coding!
-// Start typing to see real-time collaboration
-
-function hello() {
-  console.log("Hello, team!");
-}
-
-// Try adding your code here
-const greet = (name) => {
-  return \`Hello, \${name}! Welcome to the session.\`;
-};
-
-console.log(greet("Developer"));`;
-
-      data = {
-        code: initialCode,
-        messages: [
-          {
-            id: "msg-1",
-            user: "System",
-            message: "Welcome to the collaboration session!",
-            timestamp: new Date().toISOString(),
-            type: "system",
-          },
-          {
-            id: "msg-2",
-            user: "System",
-            message: "Start coding together! Changes will be synchronized in real-time.",
-            timestamp: new Date().toISOString(),
-            type: "system",
-          },
-        ],
-        participants: [],
-        lastUpdate: Date.now(),
-      };
-    }
-
-    // Add current user if not already in participants
-    const existingUser = data.participants.find(p => p.id === userId.current);
-    if (!existingUser && !hasJoined.current) {
-      const newParticipant: Participant = {
-        id: userId.current,
-        name: userName.current,
-        isOwner: data.participants.length === 0,
-        isActive: true,
-        color: userColor.current,
-        lastSeen: Date.now(),
-      };
-
-      data.participants.push(newParticipant);
-
-      // Add join message
-      data.messages.push({
-        id: `msg-join-${userId.current}-${Date.now()}`,
-        user: "System",
-        message: `${userName.current} joined the session`,
-        timestamp: new Date().toISOString(),
-        type: "system",
-      });
-
-      hasJoined.current = true;
-    } else if (existingUser) {
-      // Update existing user to active
-      data.participants = data.participants.map(p =>
-        p.id === userId.current
-          ? { ...p, isActive: true, lastSeen: Date.now() }
-          : p
-      );
-      hasJoined.current = true;
-    }
-
-    setCode(data.code);
-    setChatMessages(data.messages);
-    setParticipants(data.participants);
-    saveCollabData(data);
-  }, [getCollabData, saveCollabData]);
-
-  // Sync from storage
-  const syncData = useCallback(() => {
-    const data = getCollabData();
-    if (!data) return;
-
-    // Update code
-    setCode(data.code);
-
-    // Update messages
-    setChatMessages(data.messages);
-
-    // Update participants - mark inactive if not seen recently
-    const now = Date.now();
-    const updatedParticipants = data.participants.map(p => ({
-      ...p,
-      isActive: p.id === userId.current ? true : (now - p.lastSeen < 15000),
-    }));
-
-    setParticipants(updatedParticipants);
-  }, [getCollabData]);
-
-  // Update heartbeat
-  const updateHeartbeat = useCallback(() => {
-    const data = getCollabData();
-    if (!data) return;
-
-    data.participants = data.participants.map(p =>
-      p.id === userId.current
-        ? { ...p, lastSeen: Date.now(), isActive: true }
-        : p
-    );
-
-    data.lastUpdate = Date.now();
-    saveCollabData(data);
-  }, [getCollabData, saveCollabData]);
+  // Auto-scroll chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
 
   // Handle code change
-  const handleCodeChange = useCallback((newCode: string | undefined) => {
-    if (newCode === undefined) return;
+  const handleCodeChange = (newCode: string | undefined) => {
+    if (newCode === undefined || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
 
+    isUpdatingCode.current = true;
     setCode(newCode);
 
-    const data = getCollabData();
-    if (data) {
-      data.code = newCode;
-      data.lastUpdate = Date.now();
-      saveCollabData(data);
-    }
-  }, [getCollabData, saveCollabData]);
+    // Send to server
+    wsRef.current.send(JSON.stringify({
+      type: 'code-change',
+      roomId,
+      code: newCode,
+    }));
+
+    setTimeout(() => {
+      isUpdatingCode.current = false;
+    }, 100);
+  };
 
   // Send message
-  const sendMessage = useCallback(() => {
-    if (!newMessage.trim()) return;
+  const sendMessage = () => {
+    if (!newMessage.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
 
     const message: ChatMessage = {
-      id: `msg-${Date.now()}-${userId.current}`,
+      id: `msg-${Date.now()}-${userId.current}-${Math.random().toString(36).substr(2, 9)}`,
       user: userName.current,
       message: newMessage,
       timestamp: new Date().toISOString(),
@@ -251,105 +205,28 @@ console.log(greet("Developer"));`;
       color: userColor.current,
     };
 
-    const data = getCollabData();
-    if (data) {
-      data.messages.push(message);
-      data.lastUpdate = Date.now();
-      setChatMessages(data.messages);
-      saveCollabData(data);
-    }
+    // Send to server
+    wsRef.current.send(JSON.stringify({
+      type: 'chat-message',
+      roomId,
+      message,
+    }));
 
+    // Add to local state immediately (will be deduplicated if server sends it back)
+    setChatMessages(prev => {
+      const exists = prev.some(m => m.id === message.id);
+      if (exists) return prev;
+      return [...prev, message];
+    });
     setNewMessage("");
-  }, [newMessage, getCollabData, saveCollabData]);
+  };
 
-  // Handle leave
-  const handleLeave = useCallback(() => {
-    if (hasLeft.current) return;
-    hasLeft.current = true;
-
-    const data = getCollabData();
-    if (data) {
-      // Mark user as inactive
-      data.participants = data.participants.map(p =>
-        p.id === userId.current ? { ...p, isActive: false } : p
-      );
-
-      // Add leave message
-      data.messages.push({
-        id: `msg-leave-${userId.current}-${Date.now()}`,
-        user: "System",
-        message: `${userName.current} left the session`,
-        timestamp: new Date().toISOString(),
-        type: "system",
-      });
-
-      data.lastUpdate = Date.now();
-      saveCollabData(data);
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
-
-    onLeave();
-  }, [getCollabData, saveCollabData, onLeave]);
-
-  // Initialize on mount
-  useEffect(() => {
-    initializeSession();
-
-    // Sync every 1 second
-    const syncInterval = setInterval(syncData, 1000);
-
-    // Update heartbeat every 5 seconds
-    const heartbeatInterval = setInterval(updateHeartbeat, 5000);
-
-    // Listen for custom collab-update events
-    const handleCollabUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      if (customEvent.detail?.roomId === roomId) {
-        syncData();
-      }
-    };
-    window.addEventListener('collab-update', handleCollabUpdate);
-
-    // Listen for storage events from other tabs
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === storageKey) {
-        syncData();
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-
-    // Cleanup on unmount
-    return () => {
-      clearInterval(syncInterval);
-      clearInterval(heartbeatInterval);
-      window.removeEventListener('collab-update', handleCollabUpdate);
-      window.removeEventListener('storage', handleStorageChange);
-
-      // Mark as left only once
-      if (!hasLeft.current) {
-        hasLeft.current = true;
-        const data = getCollabData();
-        if (data) {
-          data.participants = data.participants.map(p =>
-            p.id === userId.current ? { ...p, isActive: false } : p
-          );
-          data.messages.push({
-            id: `msg-leave-${userId.current}-${Date.now()}`,
-            user: "System",
-            message: `${userName.current} left the session`,
-            timestamp: new Date().toISOString(),
-            type: "system",
-          });
-          data.lastUpdate = Date.now();
-          localStorage.setItem(storageKey, JSON.stringify(data));
-        }
-      }
-    };
-  }, [initializeSession, syncData, updateHeartbeat, roomId, storageKey, getCollabData]);
-
-  // Auto-scroll chat
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
+  };
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
     editorRef.current = editor;
@@ -366,20 +243,10 @@ console.log(greet("Developer"));`;
       colors: {
         "editor.background": "#1e1e1e",
         "editor.foreground": "#f8f8f2",
-        "editorLineNumber.foreground": "#6a6a6a",
-        "editor.selectionBackground": "rgba(0, 100, 200, 0.3)",
-        "editor.lineHighlightBackground": "rgba(255, 255, 255, 0.08)",
       },
     });
 
     monaco.editor.setTheme("collaboration-dark");
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
   };
 
   const copyRoomLink = () => {
@@ -393,42 +260,45 @@ console.log(greet("Developer"));`;
 
   return (
     <div className="h-screen flex bg-bg-primary">
-      {/* Main Editor Area */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border-primary bg-surface-secondary">
           <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              onClick={handleLeave}
-              leftIcon={<ArrowLeft className="w-4 h-4" />}
-            >
+            <Button variant="outline" onClick={onLeave} leftIcon={<ArrowLeft className="w-4 h-4" />}>
               Back to Sessions
             </Button>
-            <h1 className="text-xl font-bold text-text-primary">
-              Collaborative Session
-            </h1>
+            <h1 className="text-xl font-bold text-text-primary">Collaborative Session</h1>
             <div className="flex items-center gap-2 px-3 py-1 bg-surface-primary rounded-full">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
               <Users className="w-4 h-4 text-green-500" />
-              <span className="text-sm text-text-secondary">
-                {activeParticipants.length} active
-              </span>
+              <span className="text-sm text-text-secondary">{activeParticipants.length} active</span>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={copyRoomLink}
-              leftIcon={linkCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-            >
-              {linkCopied ? "Copied!" : "Copy Link"}
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={copyRoomLink}
+            leftIcon={linkCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+          >
+            {linkCopied ? "Copied!" : "Copy Link"}
+          </Button>
         </div>
 
-        {/* Code Editor */}
+        {!isConnected && (
+          <div className="p-4 bg-yellow-500/10 border-b border-yellow-500/20 text-yellow-500 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="animate-pulse">⚠️</span>
+              <div>
+                <div className="font-semibold">Connecting to collaboration server...</div>
+                <div className="text-xs mt-1">
+                  Server URL: {WS_URL}
+                  <br />
+                  Make sure WebSocket server is running: <code className="bg-black/20 px-1 rounded">node collaboration-server.js</code>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 overflow-hidden">
           <Editor
             height="100%"
@@ -445,48 +315,29 @@ console.log(greet("Developer"));`;
               tabSize: 2,
               lineNumbers: "on",
               folding: true,
-              renderWhitespace: "selection",
-              cursorBlinking: "smooth",
-              cursorSmoothCaretAnimation: "on",
-              smoothScrolling: true,
               padding: { top: 16, bottom: 16 },
             }}
           />
         </div>
       </div>
 
-      {/* Right Sidebar */}
       <div className="w-80 border-l border-border-primary bg-surface-secondary flex flex-col">
-        {/* Participants Panel */}
         <div className="border-b border-border-primary">
           <div className="p-4">
             <h3 className="font-semibold text-text-primary mb-3 flex items-center gap-2">
               <Users className="w-4 h-4 text-primary-500" />
               Participants ({activeParticipants.length})
             </h3>
-
             <div className="space-y-2">
-              {participants.map((participant) => (
-                <div
-                  key={participant.id}
-                  className="flex items-center gap-3 p-2 rounded-lg bg-surface-primary"
-                >
-                  <div
-                    className={`w-2 h-2 rounded-full ${participant.isActive ? "bg-green-500" : "bg-gray-500"
-                      }`}
-                  />
+              {participants.map((participant, index) => (
+                <div key={`${participant.id}-${index}`} className="flex items-center gap-3 p-2 rounded-lg bg-surface-primary">
+                  <div className={`w-2 h-2 rounded-full ${participant.isActive ? "bg-green-500" : "bg-gray-500"}`} />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-text-primary">
-                        {participant.name}
-                      </span>
-                      {participant.isOwner && (
-                        <Crown className="w-3 h-3 text-yellow-500" />
-                      )}
+                      <span className="text-sm font-medium text-text-primary">{participant.name}</span>
+                      {participant.isOwner && <Crown className="w-3 h-3 text-yellow-500" />}
                     </div>
-                    <div className="text-xs text-text-tertiary">
-                      {participant.isActive ? "Active now" : "Offline"}
-                    </div>
+                    <div className="text-xs text-text-tertiary">{participant.isActive ? "Active now" : "Offline"}</div>
                   </div>
                 </div>
               ))}
@@ -494,7 +345,6 @@ console.log(greet("Developer"));`;
           </div>
         </div>
 
-        {/* Chat Panel */}
         <div className="flex-1 flex flex-col min-h-0">
           <div className="p-4 border-b border-border-primary">
             <h3 className="font-semibold text-text-primary flex items-center gap-2">
@@ -503,25 +353,18 @@ console.log(greet("Developer"));`;
             </h3>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {chatMessages.map((message) => (
+            {chatMessages.map((message, index) => (
               <div
-                key={message.id}
-                className={`${message.type === "system"
-                    ? "text-center text-xs text-text-tertiary italic"
-                    : ""
-                  }`}
+                key={`${message.id}-${index}`}
+                className={message.type === "system" ? "text-center text-xs text-text-tertiary italic" : ""}
               >
                 {message.type === "system" ? (
                   <div className="py-1">{message.message}</div>
                 ) : (
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span
-                        className="text-xs font-medium"
-                        style={{ color: message.color || "#64B5F6" }}
-                      >
+                      <span className="text-xs font-medium" style={{ color: message.color || "#64B5F6" }}>
                         {message.user}
                       </span>
                       <span className="text-xs text-text-tertiary">
@@ -538,7 +381,6 @@ console.log(greet("Developer"));`;
             <div ref={chatEndRef} />
           </div>
 
-          {/* Message Input */}
           <div className="p-4 border-t border-border-primary">
             <div className="flex gap-2">
               <input
@@ -548,13 +390,9 @@ console.log(greet("Developer"));`;
                 onKeyPress={handleKeyPress}
                 placeholder="Type a message..."
                 className="flex-1 px-3 py-2 bg-surface-primary border border-border-primary rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500"
+                disabled={!isConnected}
               />
-              <Button
-                size="sm"
-                onClick={sendMessage}
-                disabled={!newMessage.trim()}
-                leftIcon={<Send className="w-4 h-4" />}
-              >
+              <Button size="sm" onClick={sendMessage} disabled={!newMessage.trim() || !isConnected} leftIcon={<Send className="w-4 h-4" />}>
                 Send
               </Button>
             </div>

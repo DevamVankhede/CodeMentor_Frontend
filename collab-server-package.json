@@ -1,0 +1,23 @@
+{
+  "name": "codementor-collaboration-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for real-time collaboration",
+  "main": "collaboration-server.js",
+  "scripts": {
+    "start": "node collaboration-server.js",
+    "dev": "node collaboration-server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "keywords": [
+    "websocket",
+    "collaboration",
+    "real-time"
+  ],
+  "author": "CodeMentor AI",
+  "license": "MIT"
+}

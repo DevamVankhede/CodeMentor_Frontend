@@ -1,528 +1,356 @@
-# CodeMentor AI - Deployment Guide
+# 🚀 COMPLETE PRODUCTION DEPLOYMENT GUIDE
 
-## Overview
-This guide covers deploying both the Next.js frontend and .NET backend to production.
+## 📋 Overview
 
----
-
-## 🚀 Frontend Deployment (Next.js)
-
-### Option 1: Vercel (Recommended for Next.js)
-
-#### Prerequisites
-- GitHub account
-- Vercel account (free tier available)
-
-#### Steps
-
-1. **Push to GitHub**
-   ```bash
-   cd codementor-ai
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git branch -M main
-   git remote add origin https://github.com/YOUR_USERNAME/codementor-ai.git
-   git push -u origin main
-   ```
-
-2. **Deploy to Vercel**
-   - Go to [vercel.com](https://vercel.com)
-   - Click "New Project"
-   - Import your GitHub repository
-   - Configure:
-     - Framework Preset: Next.js
-     - Root Directory: `./` (or `codementor-ai` if in subdirectory)
-     - Build Command: `npm run build`
-     - Output Directory: `.next`
-
-3. **Environment Variables**
-   Add these in Vercel dashboard (Settings → Environment Variables):
-   ```
-   NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
-   NEXT_PUBLIC_API_URL=https://your-backend-url.com
-   NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
-   JWT_SECRET=your_secure_jwt_secret
-   ```
-
-4. **Deploy**
-   - Click "Deploy"
-   - Wait for build to complete
-   - Your app will be live at `https://your-app.vercel.app`
-
-#### Custom Domain (Optional)
-- Go to Settings → Domains
-- Add your custom domain
-- Update DNS records as instructed
+You need to deploy **TWO** separate services:
+1. **Frontend (Next.js)** - Your main website
+2. **WebSocket Server** - For real-time collaboration
 
 ---
 
-### Option 2: Netlify
+## 🎯 DEPLOYMENT OPTION 1: Render.com (RECOMMENDED - FREE)
 
-#### Steps
+### Step 1: Deploy WebSocket Server on Render
 
-1. **Build the app**
-   ```bash
-   npm run build
+1. **Go to [render.com](https://render.com)** and sign up/login
+
+2. **Click "New +" → "Web Service"**
+
+3. **Connect your GitHub repository**
+
+4. **Configure the service:**
+   ```
+   Name: codementor-collab-server
+   Region: Choose closest to your users
+   Branch: main
+   Root Directory: (leave empty)
+   Runtime: Node
+   Build Command: npm install ws
+   Start Command: node collaboration-server.js
    ```
 
-2. **Deploy to Netlify**
-   - Go to [netlify.com](https://netlify.com)
-   - Drag and drop the `.next` folder
-   - Or connect GitHub repository
+5. **Set Environment Variables:**
+   ```
+   PORT = (leave empty - Render auto-assigns)
+   ```
 
-3. **Configure**
-   - Build command: `npm run build`
-   - Publish directory: `.next`
-   - Add environment variables in Site Settings
+6. **Choose Plan:** Free
+
+7. **Click "Create Web Service"**
+
+8. **Wait for deployment** (2-3 minutes)
+
+9. **Copy your WebSocket URL:**
+   ```
+   Example: https://codementor-collab-server.onrender.com
+   ```
+   
+   **IMPORTANT:** Change `https://` to `wss://` for WebSocket:
+   ```
+   wss://codementor-collab-server.onrender.com
+   ```
+
+### Step 2: Deploy Frontend on Vercel
+
+1. **Go to [vercel.com](https://vercel.com)** and sign up/login
+
+2. **Click "Add New" → "Project"**
+
+3. **Import your GitHub repository**
+
+4. **Configure:**
+   ```
+   Framework Preset: Next.js
+   Root Directory: ./
+   Build Command: npm run build
+   Output Directory: .next
+   Install Command: npm install
+   ```
+
+5. **Add Environment Variable:**
+   ```
+   Name: NEXT_PUBLIC_WS_URL
+   Value: wss://codementor-collab-server.onrender.com
+   ```
+   (Use YOUR WebSocket URL from Step 1)
+
+6. **Click "Deploy"**
+
+7. **Done!** Your site will be live at `https://your-project.vercel.app`
 
 ---
 
-### Option 3: Docker + Any Cloud Provider
+## 🎯 DEPLOYMENT OPTION 2: Railway.app (EASY)
 
-#### Create Dockerfile
-```dockerfile
-# codementor-ai/Dockerfile
-FROM node:18-alpine AS base
+### Step 1: Deploy WebSocket Server
+
+1. **Go to [railway.app](https://railway.app)** and sign up
+
+2. **Click "New Project" → "Deploy from GitHub repo"**
+
+3. **Select your repository**
+
+4. **Add these settings:**
+   ```
+   Start Command: node collaboration-server.js
+   ```
+
+5. **Add Environment Variables:**
+   ```
+   PORT = (Railway auto-assigns)
+   ```
+
+6. **Generate Domain:**
+   - Go to Settings → Generate Domain
+   - Copy the URL (e.g., `codementor-collab.up.railway.app`)
+   - Your WebSocket URL: `wss://codementor-collab.up.railway.app`
+
+### Step 2: Deploy Frontend
+
+1. **Create another Railway project** for frontend
+
+2. **Or use Vercel** (follow Option 1, Step 2)
+
+3. **Set Environment Variable:**
+   ```
+   NEXT_PUBLIC_WS_URL=wss://codementor-collab.up.railway.app
+   ```
+
+---
+
+## 🎯 DEPLOYMENT OPTION 3: Same Server (VPS/Cloud)
+
+If you have your own server (AWS, DigitalOcean, etc.):
+
+### Step 1: Setup WebSocket Server
+
+```bash
+# SSH into your server
+ssh user@your-server.com
+
+# Create directory
+mkdir -p /var/www/collab-server
+cd /var/www/collab-server
+
+# Upload collaboration-server.js
+# (use scp, git, or FTP)
 
 # Install dependencies
-FROM base AS deps
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+npm install ws
 
-# Build the app
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN npm run build
+# Install PM2 for process management
+npm install -g pm2
 
-# Production image
-FROM base AS runner
-WORKDIR /app
+# Start server
+pm2 start collaboration-server.js --name collab-server
 
-ENV NODE_ENV production
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-USER nextjs
-
-EXPOSE 3000
-
-ENV PORT 3000
-
-CMD ["node", "server.js"]
+# Save PM2 config
+pm2 save
+pm2 startup
 ```
 
-#### Update next.config.js
-```javascript
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  output: 'standalone',
-  // ... other config
+### Step 2: Configure Nginx (if using)
+
+```nginx
+# /etc/nginx/sites-available/collab-server
+
+upstream websocket {
+    server localhost:8080;
 }
 
-module.exports = nextConfig
+server {
+    listen 80;
+    server_name collab.yourdomain.com;
+
+    location / {
+        proxy_pass http://websocket;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
 ```
 
-#### Build and Run
-```bash
-docker build -t codementor-frontend .
-docker run -p 3000:3000 \
-  -e NEXT_PUBLIC_GEMINI_API_KEY=your_key \
-  -e NEXT_PUBLIC_API_URL=https://your-backend.com \
-  codementor-frontend
-```
-
----
-
-## 🔧 Backend Deployment (.NET)
-
-### Option 1: Azure App Service (Recommended for .NET)
-
-#### Prerequisites
-- Azure account
-- Azure CLI installed
-
-#### Steps
-
-1. **Prepare the app**
-   ```bash
-   cd your-backend-directory
-   dotnet publish -c Release -o ./publish
-   ```
-
-2. **Create Azure Resources**
-   ```bash
-   # Login to Azure
-   az login
-
-   # Create resource group
-   az group create --name codementor-rg --location eastus
-
-   # Create App Service plan
-   az appservice plan create \
-     --name codementor-plan \
-     --resource-group codementor-rg \
-     --sku B1 \
-     --is-linux
-
-   # Create web app
-   az webapp create \
-     --name codementor-api \
-     --resource-group codementor-rg \
-     --plan codementor-plan \
-     --runtime "DOTNET|8.0"
-   ```
-
-3. **Configure App Settings**
-   ```bash
-   az webapp config appsettings set \
-     --name codementor-api \
-     --resource-group codementor-rg \
-     --settings \
-       ConnectionStrings__DefaultConnection="your_connection_string" \
-       JwtSettings__Secret="your_jwt_secret" \
-       JwtSettings__Issuer="https://codementor-api.azurewebsites.net" \
-       ASPNETCORE_ENVIRONMENT="Production"
-   ```
-
-4. **Deploy**
-   ```bash
-   # Deploy using ZIP
-   cd publish
-   zip -r ../app.zip .
-   cd ..
-   
-   az webapp deployment source config-zip \
-     --name codementor-api \
-     --resource-group codementor-rg \
-     --src app.zip
-   ```
-
-5. **Enable CORS**
-   ```bash
-   az webapp cors add \
-     --name codementor-api \
-     --resource-group codementor-rg \
-     --allowed-origins https://your-frontend.vercel.app
-   ```
-
-#### Your API will be available at:
-`https://codementor-api.azurewebsites.net`
-
----
-
-### Option 2: Docker + Any Cloud Provider
-
-#### Create Dockerfile
-```dockerfile
-# Backend/Dockerfile
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-WORKDIR /app
-EXPOSE 80
-EXPOSE 443
-
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
-COPY ["YourProject.csproj", "./"]
-RUN dotnet restore "YourProject.csproj"
-COPY . .
-RUN dotnet build "YourProject.csproj" -c Release -o /app/build
-
-FROM build AS publish
-RUN dotnet publish "YourProject.csproj" -c Release -o /app/publish
-
-FROM base AS final
-WORKDIR /app
-COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "YourProject.dll"]
-```
-
-#### Build and Run
-```bash
-docker build -t codementor-backend .
-docker run -p 5000:80 \
-  -e ConnectionStrings__DefaultConnection="your_connection" \
-  -e JwtSettings__Secret="your_secret" \
-  codementor-backend
-```
-
----
-
-### Option 3: Railway
-
-#### Steps
-
-1. **Install Railway CLI**
-   ```bash
-   npm install -g @railway/cli
-   ```
-
-2. **Login and Initialize**
-   ```bash
-   railway login
-   cd your-backend-directory
-   railway init
-   ```
-
-3. **Add Environment Variables**
-   ```bash
-   railway variables set ConnectionStrings__DefaultConnection="your_connection"
-   railway variables set JwtSettings__Secret="your_secret"
-   ```
-
-4. **Deploy**
-   ```bash
-   railway up
-   ```
-
----
-
-## 🗄️ Database Deployment
-
-### Option 1: Azure SQL Database
+### Step 3: Setup SSL with Let's Encrypt
 
 ```bash
-# Create SQL server
-az sql server create \
-  --name codementor-sql \
-  --resource-group codementor-rg \
-  --location eastus \
-  --admin-user sqladmin \
-  --admin-password YourSecurePassword123!
+# Install certbot
+sudo apt install certbot python3-certbot-nginx
 
-# Create database
-az sql db create \
-  --name codementor-db \
-  --server codementor-sql \
-  --resource-group codementor-rg \
-  --service-objective S0
+# Get SSL certificate
+sudo certbot --nginx -d collab.yourdomain.com
 
-# Get connection string
-az sql db show-connection-string \
-  --name codementor-db \
-  --server codementor-sql \
-  --client ado.net
-```
-
-### Option 2: PostgreSQL on Railway
-
-1. Go to Railway dashboard
-2. Click "New" → "Database" → "PostgreSQL"
-3. Copy the connection string
-4. Use in your backend configuration
-
----
-
-## 🔐 Security Checklist
-
-### Frontend
-- [ ] Set strong JWT_SECRET
-- [ ] Use HTTPS only
-- [ ] Configure CORS properly
-- [ ] Hide API keys (use environment variables)
-- [ ] Enable rate limiting
-
-### Backend
-- [ ] Use strong database passwords
-- [ ] Enable HTTPS
-- [ ] Configure CORS for your frontend domain only
-- [ ] Use secure JWT settings
-- [ ] Enable authentication on all protected routes
-- [ ] Set up logging and monitoring
-
----
-
-## 🌐 DNS Configuration
-
-### If using custom domain:
-
-1. **Frontend (Vercel)**
-   - Add A record: `@` → Vercel IP
-   - Add CNAME: `www` → `cname.vercel-dns.com`
-
-2. **Backend (Azure)**
-   - Add CNAME: `api` → `codementor-api.azurewebsites.net`
-
----
-
-## 📊 Monitoring & Logging
-
-### Frontend (Vercel)
-- Built-in analytics available
-- Check deployment logs in dashboard
-- Set up error tracking (Sentry)
-
-### Backend (Azure)
-```bash
-# View logs
-az webapp log tail \
-  --name codementor-api \
-  --resource-group codementor-rg
-
-# Enable application insights
-az monitor app-insights component create \
-  --app codementor-insights \
-  --location eastus \
-  --resource-group codementor-rg
+# Your WebSocket URL will be:
+# wss://collab.yourdomain.com
 ```
 
 ---
 
-## 🚀 Quick Deployment Commands
+## 📝 ENVIRONMENT VARIABLES SUMMARY
 
-### Frontend (Vercel)
+### Frontend (.env.production)
 ```bash
-# Install Vercel CLI
-npm i -g vercel
+# WebSocket Server URL (REQUIRED)
+NEXT_PUBLIC_WS_URL=wss://your-websocket-server.com
+
+# API URL (if you have backend)
+NEXT_PUBLIC_API_URL=https://your-api.com
+
+# Other variables
+NEXT_PUBLIC_SITE_URL=https://your-site.com
+```
+
+### WebSocket Server
+```bash
+# Port (auto-assigned by hosting platform)
+PORT=8080
+
+# No other variables needed!
+```
+
+---
+
+## ✅ VST
+
+After deployment, verify:
+
+
+```bash
+
+https://your-websocket-server.com
+
+# Should show:
+{
+  "status": "running
+  "message": "Collaboration WebSocket Server",
+  "port": 8080,
+  "timest
+}
+
+
+### 2. Frontket
+- Open browser console (F12)
+- Go to your collaboration page
+- Look f server`
+- Should see green dot next to participant count
+
+### 3. Test Real-Timeures
+- Open site in 2 different browsers
+ssion
+- Type in one → Shher
+- Send chat both
+
+---
+
+TING
+
+### Iss
+
+**Solution 1:** Check WRL
+```javascript
+// Make sure it starts with wss:// (not 
+NEXT_PUBLIC_WS_URL=w
+```
+
+**S
+de)
+
+wall
+- Make surserver
+
+### Issue: "Mixed Content"rror
+
+**Solution:** Use `wss://` (se://`
+```bas
+
+ws://your-server.com
+
+# Correct:
+wss://your-server.com
+```
+
+
+
+**Solution
+- Upgrade to paid plan ($7/month)
+- Or use Railway (doesn't sleep)
+- Or iing
+
+---
+
+## 💰 COST BRN
+
+
+- *
+s/month)
+- **Total:** $0/month
+
+### Production Option (Recommend
+
+- **Webmonth)
+- **Total:** $27/month
+
+### Enterprise Option
+- **Frontend:** Vercel Enterprise ustom)
+- **WebSocket:** AWS/th)
+- **Total:** Custom pricing
+
+---
+
+## 🎯 RECOMMENDED FOR YOU
+
+Based on your needs, I recond:
+
+### For Development/Testg:
+``
+Frontend: Vercel (Free)
+WebSocket: Render (Free)
+Total: $0/month
+```
+
+###:
+
+Frontend: Vercel (Free or Pro)
+
+Total: $5-7/month
+```
+
+---
+
+##  COMMANDS
+
+### Deploy WebSocket Serder:
+b
+2. Connect t
+3. Set start command: `node
+4. Copy WebSocket URL
+
+### Deploy Frontend to Vercel:
+```bash
+ercel CLI
+npm i -g ve
 
 # Deploy
-cd codementor-ai
-vercel --prod
-```
+vercel
 
-### Backend (Azure)
-```bash
-# One-command deploy
-az webapp up \
-  --name codementor-api \
-  --resource-group codementor-rg \
-  --runtime "DOTNET:8.0"
+# Add environment variable
+vercel env add NEXT_PUBLIC_WS_URL
+
+# Rloy
+rod
 ```
 
 ---
 
-## 🔄 CI/CD Setup
+## 🎉 YOU'RE READY TO DE
 
-### GitHub Actions for Frontend
+Follow the steps above and your collaboration ss:
+owsers
+- ✅ Different devices  
+- ✅ Different locations
+nc
+- ✅up
 
-Create `.github/workflows/deploy-frontend.yml`:
-```yaml
-name: Deploy Frontend
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - run: npm ci
-      - run: npm run build
-      - uses: amondnet/vercel-action@v20
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.ORG_ID }}
-          vercel-project-id: ${{ secrets.PROJECT_ID }}
-```
-
-### GitHub Actions for Backend
-
-Create `.github/workflows/deploy-backend.yml`:
-```yaml
-name: Deploy Backend
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '8.0.x'
-      - run: dotnet publish -c Release -o ./publish
-      - uses: azure/webapps-deploy@v2
-        with:
-          app-name: codementor-api
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./publish
-```
-
----
-
-## 📝 Post-Deployment Checklist
-
-- [ ] Frontend is accessible
-- [ ] Backend API is responding
-- [ ] Database connection works
-- [ ] Authentication works
-- [ ] AI features work (Gemini API)
-- [ ] CORS is configured correctly
-- [ ] HTTPS is enabled
-- [ ] Environment variables are set
-- [ ] Monitoring is active
-- [ ] Backups are configured
-
----
-
-## 🆘 Troubleshooting
-
-### Frontend Issues
-- **Build fails**: Check Node version (use 18+)
-- **API calls fail**: Verify NEXT_PUBLIC_API_URL
-- **Gemini not working**: Check NEXT_PUBLIC_GEMINI_API_KEY
-
-### Backend Issues
-- **500 errors**: Check application logs
-- **Database connection fails**: Verify connection string
-- **CORS errors**: Add frontend URL to CORS policy
-
-### Common Commands
-```bash
-# Check frontend logs (Vercel)
-vercel logs
-
-# Check backend logs (Azure)
-az webapp log tail --name codementor-api --resource-group codementor-rg
-
-# Restart backend
-az webapp restart --name codementor-api --resource-group codementor-rg
-```
-
----
-
-## 💰 Cost Estimates
-
-### Free Tier Options
-- **Frontend**: Vercel (Free tier: 100GB bandwidth)
-- **Backend**: Azure App Service (Free tier available)
-- **Database**: Railway PostgreSQL (Free tier: 500MB)
-
-### Paid Options (Monthly)
-- **Vercel Pro**: $20/month
-- **Azure App Service B1**: ~$13/month
-- **Azure SQL Database S0**: ~$15/month
-
-**Total Estimated Cost**: $0-50/month depending on usage
-
----
-
-## 📞 Support
-
-If you encounter issues:
-1. Check application logs
-2. Verify environment variables
-3. Test API endpoints manually
-4. Check CORS configuration
-5. Review security settings
-
----
-
-**Deployment Status**: Ready to deploy!
-**Recommended Stack**: Vercel (Frontend) + Azure (Backend) + Azure SQL (Database)
+**Choose your deployment o!** 🚀
