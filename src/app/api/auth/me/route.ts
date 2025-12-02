@@ -23,7 +23,29 @@ export async function GET(request: NextRequest) {
             },
         });
 
-        const data = await response.json();
+        // Handle non-JSON responses (rate limiting, HTML error pages, etc.)
+        const contentType = response.headers.get('content-type');
+        let data;
+
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            // Backend returned non-JSON (HTML, plain text, etc.)
+            const text = await response.text();
+            console.warn('⚠️ Backend returned non-JSON response:', text.substring(0, 100));
+
+            if (response.status === 429) {
+                return NextResponse.json(
+                    { error: 'Too many requests. Please wait a moment and try again.' },
+                    { status: 429 }
+                );
+            }
+
+            return NextResponse.json(
+                { error: `Backend error (${response.status})` },
+                { status: response.status }
+            );
+        }
 
         if (!response.ok) {
             return NextResponse.json(
