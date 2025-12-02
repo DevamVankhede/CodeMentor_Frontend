@@ -45,20 +45,20 @@ const USER_COLORS = [
 
 // Generate unique user ID
 const getUserId = () => {
-  let userId = localStorage.getItem("collab-user-id");
+  let userId = sessionStorage.getItem("collab-user-id");
   if (!userId) {
     userId = `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    localStorage.setItem("collab-user-id", userId);
+    sessionStorage.setItem("collab-user-id", userId);
   }
   return userId;
 };
 
 // Get user name
 const getUserName = () => {
-  let userName = localStorage.getItem("collab-user-name");
+  let userName = sessionStorage.getItem("collab-user-name");
   if (!userName) {
     userName = `User${Math.floor(Math.random() * 1000)}`;
-    localStorage.setItem("collab-user-name", userName);
+    sessionStorage.setItem("collab-user-name", userName);
   }
   return userName;
 };
@@ -70,8 +70,8 @@ export default function SimpleCollaborationHub({
   const userId = useRef(getUserId());
   const userName = useRef(getUserName());
   const userColor = useRef(USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)]);
-  const isUpdating = useRef(false);
-  const lastCodeUpdate = useRef(0);
+  const hasJoined = useRef(false);
+  const hasLeft = useRef(false);
 
   const [code, setCode] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -81,67 +81,37 @@ export default function SimpleCollaborationHub({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<any>(null);
 
-  // Initialize or load collaboration data
-  const initializeCollaboration = useCallback(() => {
-    const storageKey = `collab-${roomId}`;
-    const stored = localStorage.getItem(storageKey);
+  const storageKey = `collab-${roomId}`;
 
-    if (stored) {
-      try {
-        const data: CollaborationData = JSON.parse(stored);
-        setCode(data.code);
-        setChatMessages(data.messages);
-
-        // Add current user to participants
-        const existingParticipant = data.participants.find(p => p.id === userId.current);
-        if (!existingParticipant) {
-          const newParticipant: Participant = {
-            id: userId.current,
-            name: userName.current,
-            isOwner: data.participants.length === 0,
-            isActive: true,
-            color: userColor.current,
-            lastSeen: Date.now(),
-          };
-          data.participants.push(newParticipant);
-
-          // Add system message
-          const joinMessage: ChatMessage = {
-            id: `msg-${Date.now()}`,
-            user: "System",
-            message: `${userName.current} joined the session`,
-            timestamp: new Date().toISOString(),
-            type: "system",
-          };
-          data.messages.push(joinMessage);
-          setChatMessages(data.messages);
-        }
-
-        // Update participants with current user active
-        const updatedParticipants = data.participants.map(p =>
-          p.id === userId.current
-            ? { ...p, isActive: true, lastSeen: Date.now() }
-            : p
-        );
-        setParticipants(updatedParticipants);
-
-        // Save updated data
-        localStorage.setItem(storageKey, JSON.stringify({
-          ...data,
-          participants: updatedParticipants,
-          lastUpdate: Date.now(),
-        }));
-      } catch (error) {
-        console.error("Failed to load collaboration data:", error);
-        initializeNewSession();
-      }
-    } else {
-      initializeNewSession();
+  // Get collaboration data
+  const getCollabData = useCallback((): CollaborationData | null => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      console.error("Failed to get collab data:", error);
+      return null;
     }
-  }, [roomId]);
+  }, [storageKey]);
 
-  const initializeNewSession = () => {
-    const initialCode = `// Welcome to collaborative coding!
+  // Save collaboration data
+  const saveCollabData = useCallback((data: CollaborationData) => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(data));
+      // Trigger custom event for cross-tab sync
+      window.dispatchEvent(new CustomEvent('collab-update', { detail: { roomId } }));
+    } catch (error) {
+      console.error("Failed to save collab data:", error);
+    }
+  }, [storageKey, roomId]);
+
+  // Initialize session
+  const initializeSession = useCallback(() => {
+    let data = getCollabData();
+
+    if (!data) {
+      // Create new session
+      const initialCode = `// Welcome to collaborative coding!
 // Start typing to see real-time collaboration
 
 function hello() {
@@ -155,153 +125,195 @@ const greet = (name) => {
 
 console.log(greet("Developer"));`;
 
-    const initialMessages: ChatMessage[] = [
-      {
-        id: "msg-1",
-        user: "System",
-        message: "Welcome to the collaboration session!",
-        timestamp: new Date().toISOString(),
-        type: "system",
-      },
-      {
-        id: "msg-2",
-        user: "System",
-        message: "Start coding together! Changes will be synchronized in real-time.",
-        timestamp: new Date().toISOString(),
-        type: "system",
-      },
-      {
-        id: "msg-3",
-        user: "System",
-        message: `${userName.current} created the session`,
-        timestamp: new Date().toISOString(),
-        type: "system",
-      },
-    ];
+      data = {
+        code: initialCode,
+        messages: [
+          {
+            id: "msg-1",
+            user: "System",
+            message: "Welcome to the collaboration session!",
+            timestamp: new Date().toISOString(),
+            type: "system",
+          },
+          {
+            id: "msg-2",
+            user: "System",
+            message: "Start coding together! Changes will be synchronized in real-time.",
+            timestamp: new Date().toISOString(),
+            type: "system",
+          },
+        ],
+        participants: [],
+        lastUpdate: Date.now(),
+      };
+    }
 
-    const initialParticipant: Participant = {
-      id: userId.current,
-      name: userName.current,
-      isOwner: true,
-      isActive: true,
+    // Add current user if not already in participants
+    const existingUser = data.participants.find(p => p.id === userId.current);
+    if (!existingUser && !hasJoined.current) {
+      const newParticipant: Participant = {
+        id: userId.current,
+        name: userName.current,
+        isOwner: data.participants.length === 0,
+        isActive: true,
+        color: userColor.current,
+        lastSeen: Date.now(),
+      };
+
+      data.participants.push(newParticipant);
+
+      // Add join message
+      data.messages.push({
+        id: `msg-join-${userId.current}-${Date.now()}`,
+        user: "System",
+        message: `${userName.current} joined the session`,
+        timestamp: new Date().toISOString(),
+        type: "system",
+      });
+
+      hasJoined.current = true;
+    } else if (existingUser) {
+      // Update existing user to active
+      data.participants = data.participants.map(p =>
+        p.id === userId.current
+          ? { ...p, isActive: true, lastSeen: Date.now() }
+          : p
+      );
+      hasJoined.current = true;
+    }
+
+    setCode(data.code);
+    setChatMessages(data.messages);
+    setParticipants(data.participants);
+    saveCollabData(data);
+  }, [getCollabData, saveCollabData]);
+
+  // Sync from storage
+  const syncData = useCallback(() => {
+    const data = getCollabData();
+    if (!data) return;
+
+    // Update code
+    setCode(data.code);
+
+    // Update messages
+    setChatMessages(data.messages);
+
+    // Update participants - mark inactive if not seen recently
+    const now = Date.now();
+    const updatedParticipants = data.participants.map(p => ({
+      ...p,
+      isActive: p.id === userId.current ? true : (now - p.lastSeen < 15000),
+    }));
+
+    setParticipants(updatedParticipants);
+  }, [getCollabData]);
+
+  // Update heartbeat
+  const updateHeartbeat = useCallback(() => {
+    const data = getCollabData();
+    if (!data) return;
+
+    data.participants = data.participants.map(p =>
+      p.id === userId.current
+        ? { ...p, lastSeen: Date.now(), isActive: true }
+        : p
+    );
+
+    data.lastUpdate = Date.now();
+    saveCollabData(data);
+  }, [getCollabData, saveCollabData]);
+
+  // Handle code change
+  const handleCodeChange = useCallback((newCode: string | undefined) => {
+    if (newCode === undefined) return;
+
+    setCode(newCode);
+
+    const data = getCollabData();
+    if (data) {
+      data.code = newCode;
+      data.lastUpdate = Date.now();
+      saveCollabData(data);
+    }
+  }, [getCollabData, saveCollabData]);
+
+  // Send message
+  const sendMessage = useCallback(() => {
+    if (!newMessage.trim()) return;
+
+    const message: ChatMessage = {
+      id: `msg-${Date.now()}-${userId.current}`,
+      user: userName.current,
+      message: newMessage,
+      timestamp: new Date().toISOString(),
+      type: "message",
       color: userColor.current,
-      lastSeen: Date.now(),
     };
 
-    setCode(initialCode);
-    setChatMessages(initialMessages);
-    setParticipants([initialParticipant]);
-
-    const storageKey = `collab-${roomId}`;
-    localStorage.setItem(storageKey, JSON.stringify({
-      code: initialCode,
-      messages: initialMessages,
-      participants: [initialParticipant],
-      lastUpdate: Date.now(),
-    }));
-  };
-
-  // Sync data from localStorage
-  const syncFromStorage = useCallback(() => {
-    if (isUpdating.current) return;
-
-    const storageKey = `collab-${roomId}`;
-    const stored = localStorage.getItem(storageKey);
-
-    if (stored) {
-      try {
-        const data: CollaborationData = JSON.parse(stored);
-
-        // Update code if changed by others
-        if (data.code !== code && Date.now() - lastCodeUpdate.current > 500) {
-          setCode(data.code);
-        }
-
-        // Update messages
-        if (JSON.stringify(data.messages) !== JSON.stringify(chatMessages)) {
-          setChatMessages(data.messages);
-        }
-
-        // Update participants and mark inactive ones
-        const now = Date.now();
-        const updatedParticipants = data.participants.map(p => ({
-          ...p,
-          isActive: p.id === userId.current || (now - p.lastSeen < 10000),
-        }));
-
-        if (JSON.stringify(updatedParticipants) !== JSON.stringify(participants)) {
-          setParticipants(updatedParticipants);
-        }
-      } catch (error) {
-        console.error("Failed to sync collaboration data:", error);
-      }
+    const data = getCollabData();
+    if (data) {
+      data.messages.push(message);
+      data.lastUpdate = Date.now();
+      setChatMessages(data.messages);
+      saveCollabData(data);
     }
-  }, [roomId, code, chatMessages, participants]);
 
-  // Update localStorage
-  const updateStorage = useCallback((updates: Partial<CollaborationData>) => {
-    isUpdating.current = true;
-    const storageKey = `collab-${roomId}`;
-    const stored = localStorage.getItem(storageKey);
+    setNewMessage("");
+  }, [newMessage, getCollabData, saveCollabData]);
 
-    if (stored) {
-      try {
-        const data: CollaborationData = JSON.parse(stored);
-        const updatedData = {
-          ...data,
-          ...updates,
-          lastUpdate: Date.now(),
-        };
-        localStorage.setItem(storageKey, JSON.stringify(updatedData));
+  // Handle leave
+  const handleLeave = useCallback(() => {
+    if (hasLeft.current) return;
+    hasLeft.current = true;
 
-        // Trigger storage event for other tabs
-        window.dispatchEvent(new Event('storage'));
-      } catch (error) {
-        console.error("Failed to update collaboration data:", error);
-      }
+    const data = getCollabData();
+    if (data) {
+      // Mark user as inactive
+      data.participants = data.participants.map(p =>
+        p.id === userId.current ? { ...p, isActive: false } : p
+      );
+
+      // Add leave message
+      data.messages.push({
+        id: `msg-leave-${userId.current}-${Date.now()}`,
+        user: "System",
+        message: `${userName.current} left the session`,
+        timestamp: new Date().toISOString(),
+        type: "system",
+      });
+
+      data.lastUpdate = Date.now();
+      saveCollabData(data);
     }
-    setTimeout(() => {
-      isUpdating.current = false;
-    }, 100);
-  }, [roomId]);
 
-  // Update participant heartbeat
-  const updateHeartbeat = useCallback(() => {
-    const storageKey = `collab-${roomId}`;
-    const stored = localStorage.getItem(storageKey);
-
-    if (stored) {
-      try {
-        const data: CollaborationData = JSON.parse(stored);
-        const updatedParticipants = data.participants.map(p =>
-          p.id === userId.current
-            ? { ...p, lastSeen: Date.now(), isActive: true }
-            : p
-        );
-        localStorage.setItem(storageKey, JSON.stringify({
-          ...data,
-          participants: updatedParticipants,
-          lastUpdate: Date.now(),
-        }));
-      } catch (error) {
-        console.error("Failed to update heartbeat:", error);
-      }
-    }
-  }, [roomId]);
+    onLeave();
+  }, [getCollabData, saveCollabData, onLeave]);
 
   // Initialize on mount
   useEffect(() => {
-    initializeCollaboration();
+    initializeSession();
 
-    // Sync every 500ms
-    const syncInterval = setInterval(syncFromStorage, 500);
+    // Sync every 1 second
+    const syncInterval = setInterval(syncData, 1000);
 
-    // Update heartbeat every 3 seconds
-    const heartbeatInterval = setInterval(updateHeartbeat, 3000);
+    // Update heartbeat every 5 seconds
+    const heartbeatInterval = setInterval(updateHeartbeat, 5000);
+
+    // Listen for custom collab-update events
+    const handleCollabUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.roomId === roomId) {
+        syncData();
+      }
+    };
+    window.addEventListener('collab-update', handleCollabUpdate);
 
     // Listen for storage events from other tabs
-    const handleStorageChange = () => {
-      syncFromStorage();
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === storageKey) {
+        syncData();
+      }
     };
     window.addEventListener('storage', handleStorageChange);
 
@@ -309,51 +321,39 @@ console.log(greet("Developer"));`;
     return () => {
       clearInterval(syncInterval);
       clearInterval(heartbeatInterval);
+      window.removeEventListener('collab-update', handleCollabUpdate);
       window.removeEventListener('storage', handleStorageChange);
 
-      // Mark user as inactive
-      const storageKey = `collab-${roomId}`;
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        try {
-          const data: CollaborationData = JSON.parse(stored);
-          const updatedParticipants = data.participants.map(p =>
+      // Mark as left only once
+      if (!hasLeft.current) {
+        hasLeft.current = true;
+        const data = getCollabData();
+        if (data) {
+          data.participants = data.participants.map(p =>
             p.id === userId.current ? { ...p, isActive: false } : p
           );
-
-          const leaveMessage: ChatMessage = {
-            id: `msg-${Date.now()}`,
+          data.messages.push({
+            id: `msg-leave-${userId.current}-${Date.now()}`,
             user: "System",
             message: `${userName.current} left the session`,
             timestamp: new Date().toISOString(),
             type: "system",
-          };
-
-          localStorage.setItem(storageKey, JSON.stringify({
-            ...data,
-            participants: updatedParticipants,
-            messages: [...data.messages, leaveMessage],
-            lastUpdate: Date.now(),
-          }));
-        } catch (error) {
-          console.error("Failed to mark user as inactive:", error);
+          });
+          data.lastUpdate = Date.now();
+          localStorage.setItem(storageKey, JSON.stringify(data));
         }
       }
     };
-  }, [initializeCollaboration, syncFromStorage, updateHeartbeat, roomId]);
+  }, [initializeSession, syncData, updateHeartbeat, roomId, storageKey, getCollabData]);
 
+  // Auto-scroll chat
   useEffect(() => {
-    scrollToBottom();
-  }, [chatMessages]);
-
-  const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, [chatMessages]);
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
     editorRef.current = editor;
 
-    // Define custom theme
     monaco.editor.defineTheme("collaboration-dark", {
       base: "vs-dark",
       inherit: true,
@@ -375,32 +375,6 @@ console.log(greet("Developer"));`;
     monaco.editor.setTheme("collaboration-dark");
   };
 
-  const handleCodeChange = (newCode: string | undefined) => {
-    if (newCode !== undefined && newCode !== code) {
-      setCode(newCode);
-      lastCodeUpdate.current = Date.now();
-      updateStorage({ code: newCode });
-    }
-  };
-
-  const sendMessage = () => {
-    if (!newMessage.trim()) return;
-
-    const message: ChatMessage = {
-      id: `msg-${Date.now()}-${userId.current}`,
-      user: userName.current,
-      message: newMessage,
-      timestamp: new Date().toISOString(),
-      type: "message",
-      color: userColor.current,
-    };
-
-    const updatedMessages = [...chatMessages, message];
-    setChatMessages(updatedMessages);
-    updateStorage({ messages: updatedMessages });
-    setNewMessage("");
-  };
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -409,11 +383,13 @@ console.log(greet("Developer"));`;
   };
 
   const copyRoomLink = () => {
-    const link = `${window.location.origin}/collaborate/${roomId}`;
+    const link = `${window.location.origin}/collaborate?join=${roomId}`;
     navigator.clipboard.writeText(link);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
+
+  const activeParticipants = participants.filter(p => p.isActive);
 
   return (
     <div className="h-screen flex bg-bg-primary">
@@ -424,9 +400,8 @@ console.log(greet("Developer"));`;
           <div className="flex items-center gap-4">
             <Button
               variant="outline"
-              onClick={onLeave}
+              onClick={handleLeave}
               leftIcon={<ArrowLeft className="w-4 h-4" />}
-              className="hover:bg-surface-primary transition-colors duration-200"
             >
               Back to Sessions
             </Button>
@@ -435,7 +410,9 @@ console.log(greet("Developer"));`;
             </h1>
             <div className="flex items-center gap-2 px-3 py-1 bg-surface-primary rounded-full">
               <Users className="w-4 h-4 text-green-500" />
-              <span className="text-sm text-text-secondary">{participants.length} active</span>
+              <span className="text-sm text-text-secondary">
+                {activeParticipants.length} active
+              </span>
             </div>
           </div>
 
@@ -445,17 +422,8 @@ console.log(greet("Developer"));`;
               variant="outline"
               onClick={copyRoomLink}
               leftIcon={linkCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-              className="hover:bg-surface-primary transition-colors duration-200"
             >
               {linkCopied ? "Copied!" : "Copy Link"}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              leftIcon={<Share2 className="w-4 h-4" />}
-              className="hover:bg-surface-primary transition-colors duration-200"
-            >
-              Invite
             </Button>
           </div>
         </div>
@@ -494,14 +462,14 @@ console.log(greet("Developer"));`;
           <div className="p-4">
             <h3 className="font-semibold text-text-primary mb-3 flex items-center gap-2">
               <Users className="w-4 h-4 text-primary-500" />
-              Participants ({participants.length})
+              Participants ({activeParticipants.length})
             </h3>
 
             <div className="space-y-2">
               {participants.map((participant) => (
                 <div
                   key={participant.id}
-                  className="flex items-center gap-3 p-2 rounded-lg bg-surface-primary hover:bg-surface-primary/80 transition-colors duration-200"
+                  className="flex items-center gap-3 p-2 rounded-lg bg-surface-primary"
                 >
                   <div
                     className={`w-2 h-2 rounded-full ${participant.isActive ? "bg-green-500" : "bg-gray-500"
@@ -516,7 +484,9 @@ console.log(greet("Developer"));`;
                         <Crown className="w-3 h-3 text-yellow-500" />
                       )}
                     </div>
-                    <div className="text-xs text-text-tertiary">Active now</div>
+                    <div className="text-xs text-text-tertiary">
+                      {participant.isActive ? "Active now" : "Offline"}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -539,8 +509,8 @@ console.log(greet("Developer"));`;
               <div
                 key={message.id}
                 className={`${message.type === "system"
-                  ? "text-center text-xs text-text-tertiary italic"
-                  : ""
+                    ? "text-center text-xs text-text-tertiary italic"
+                    : ""
                   }`}
               >
                 {message.type === "system" ? (
@@ -577,14 +547,13 @@ console.log(greet("Developer"));`;
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type a message..."
-                className="flex-1 px-3 py-2 bg-surface-primary border border-border-primary rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+                className="flex-1 px-3 py-2 bg-surface-primary border border-border-primary rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
               <Button
                 size="sm"
                 onClick={sendMessage}
                 disabled={!newMessage.trim()}
                 leftIcon={<Send className="w-4 h-4" />}
-                className="hover:opacity-90 transition-opacity duration-200"
               >
                 Send
               </Button>
